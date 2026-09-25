@@ -1,3 +1,46 @@
+# Patio — Tokyo26
+
+An experiment in open information, and a project that helped shape my life.
+
+## Why I am bringing Patio back
+
+Patio is part of why I am where I am today — both professionally and personally. It helped me find my way in the ecosystem, taught me more than I could have imagined, and introduced me to people who became great friends.
+
+Being here in Tokyo is part of that journey. This hackathon feels like the right moment to bring Patio back to life and give something back to a project, and a community, that have given me so much.
+
+## What it stands for
+
+Everyone should be able to access information freely. For people who cannot, that freedom can make a real difference.
+
+Patio is my small contribution toward that possibility and a fairer world. That is what makes this personal, beyond any demo or hackathon.
+
+## The technical idea
+
+The original PAT.IO station explored using Ethereum transaction data and the mempool to distribute audio and video.
+
+Its documented proof-of-concept flow was:
+
+1. **Encode:** convert a media file to Base64, add markers identifying the content, and encode the result as hex.
+2. **Broadcast:** split the payload into chunks carried by transactions from a broadcaster's station address.
+3. **Listen:** watch pending transactions associated with that address through a mempool data provider.
+4. **Reconstruct:** collect the payloads, detect the content boundaries, decode the media, and play it in the browser.
+
+The repository contains early HTML/JavaScript interfaces, media conversion scripts, and a Node.js/Express backend using ethers. These are the starting materials for the revival; the end-to-end flow still needs to be verified for this new chapter.
+
+## The Tokyo26 starting point
+
+- Recover a runnable baseline and check which parts of the original experiment still work.
+- Gradually bring in selected components from the other repository, with a clear purpose for each commit.
+- Revisit transaction handling, mempool access, payload reconstruction, and key management as we rebuild.
+- Define a focused demo around what we can validate during the hackathon.
+
+Development will happen on `tokyo26`. This first commit records the motivation and starting direction; implementation will follow step by step.
+
+---
+
+<details>
+<summary>Original prototype documentation</summary>
+
 # PAT.IO station
 
 ## CAST PAGE BEHAVIOUR
@@ -32,3 +75,5 @@ caster_identifier   The private_key access information, we are not taking high s
 4º Then it converts the 'base64' to the file to play, showing the right DIV (for audioplayer or videoplayer) inside the playing box.
 
 5º For this demo the TUNE-IN page will show the audio or video version of the player depending on the detected incoming streaming.
+
+</details>
