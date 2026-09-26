@@ -109,7 +109,7 @@ a{color:inherit}
 .hero{position:relative;display:grid;place-items:center;text-align:center;min-height:min(calc(100svh - 150px),800px);padding-block:clamp(40px,6vw,72px) clamp(72px,9vw,120px)}
 .cable-divider{position:relative;height:clamp(150px,16vw,220px);margin:0 calc(var(--gut) * -1) clamp(40px,6vw,80px)}
 .cable{position:absolute;inset:0;width:100%;height:100%;display:block}
-.hero-inner{position:relative;z-index:1;display:grid;gap:34px;justify-items:center;max-width:1000px;margin-inline:auto}
+.hero-inner{position:relative;z-index:1;display:grid;gap:34px;justify-items:center;width:100%;max-width:1180px;margin-inline:auto}
 h1{
   margin:0;font-weight:inherit;font-size:clamp(46px,7.2vw,104px);line-height:.95;letter-spacing:-0.01em;
   text-wrap:balance;
@@ -146,8 +146,10 @@ h1 .w.accent{position:relative}
 @media (prefers-reduced-motion:reduce){.fog{display:none}}
 
 .cta-row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:center}
-.hero-sub{margin:10px 0 0;font-size:clamp(20px,2vw,26px);line-height:1.4;color:#cdc2b4;max-width:34ch;text-wrap:balance}
-.hero-note{margin:0;font-size:13px;color:var(--dim);max-width:90ch;text-wrap:pretty}
+.hero-sub{margin:10px 0 0;font-size:clamp(5px,1.05vw,15px);line-height:1.4;color:#cdc2b4;white-space:nowrap}
+.hero .btn{font-size:23px;padding:17px 31px}
+.hero .btn-primary,.hero .btn-ghost{padding-left:27px}
+.hero .btn .ico{width:18px;height:18px}
 
 /* ---------- Live strip ---------- */
 .strip{margin:0;padding-inline:var(--gut);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch;border-block:1px solid var(--line);background:rgba(17,15,14,.6);backdrop-filter:blur(4px)}
@@ -442,12 +444,11 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}
     <section class="hero" id="hero" aria-labelledby="hero-title">
       <div class="hero-inner">
         <h1 id="hero-title" class="reveal" data-cell="9" data-dur="1700" data-d="150"><span class="w">Ethereum</span> <span class="w">is</span> <span class="w">the</span> <span class="w accent">radio.<span class="scribble" aria-hidden="true"><canvas></canvas></span></span></h1>
-        <p class="hero-sub reveal" data-d="900">Live audio and tiny video broadcast through Ethereum’s mempool.</p>
+        <p class="hero-sub reveal" data-d="900">Live audio and tiny video broadcast through Ethereum’s mempool. Sent as pending transactions on the Hoodi testnet. Listening needs no wallet.</p>
         <div class="cta-row reveal" data-d="1150">
           <a class="btn btn-primary" href="https://patiostation.vercel.app/cast"><svg class="ico mic" viewBox="0 0 12 12" aria-hidden="true"><path d="M4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM7 0h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM8 1h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM8 2h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM8 3h1v1h-1zM1 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM10 4h1v1h-1zM1 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM8 5h1v1h-1zM10 5h1v1h-1zM1 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1zM10 6h1v1h-1zM2 7h1v1h-1zM9 7h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM5 9h1v1h-1zM6 9h1v1h-1zM5 10h1v1h-1zM6 10h1v1h-1zM3 11h1v1h-1zM4 11h1v1h-1zM5 11h1v1h-1zM6 11h1v1h-1zM7 11h1v1h-1zM8 11h1v1h-1z" fill="currentColor"/></svg>Go live</a>
           <a class="btn btn-ghost" href="https://patiostation.vercel.app/"><svg class="ico phones" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM7 0h1v1h-1zM8 0h1v1h-1zM2 1h1v1h-1zM9 1h1v1h-1zM1 2h1v1h-1zM10 2h1v1h-1zM0 3h1v1h-1zM11 3h1v1h-1zM0 4h1v1h-1zM11 4h1v1h-1zM0 5h1v1h-1zM11 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM9 6h1v1h-1zM10 6h1v1h-1zM11 6h1v1h-1zM0 7h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM8 7h1v1h-1zM9 7h1v1h-1zM10 7h1v1h-1zM11 7h1v1h-1zM0 8h1v1h-1zM1 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM8 8h1v1h-1zM9 8h1v1h-1zM10 8h1v1h-1zM11 8h1v1h-1zM0 9h1v1h-1zM1 9h1v1h-1zM2 9h1v1h-1zM3 9h1v1h-1zM8 9h1v1h-1zM9 9h1v1h-1zM10 9h1v1h-1zM11 9h1v1h-1zM0 10h1v1h-1zM1 10h1v1h-1zM2 10h1v1h-1zM9 10h1v1h-1zM10 10h1v1h-1zM11 10h1v1h-1z" fill="currentColor"/></svg>Tune in</a>
         </div>
-        <p class="hero-note reveal" data-d="1400">Sent as pending transactions on the Hoodi testnet. Listening needs no wallet.</p>
               </div>
     </section>
   </div>
