@@ -5,12 +5,14 @@
   "type": "module",
   "exports": "./src/index.ts",
   "scripts": {
+    "test": "node --experimental-strip-types --test src/*.test.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "viem": "^2.37.0"
   },
   "devDependencies": {
+    "@types/node": "^24.1.0",
     "typescript": "catalog:"
   }
 }

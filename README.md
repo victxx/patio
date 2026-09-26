@@ -38,13 +38,16 @@ Development will happen on `tokyo26`. This first commit records the motivation a
 
 ## Protocol workspace
 
-`packages/protocol` currently contains the `PatioPacketV1` types, message and codec identifiers, and packet envelope constants. Encoding, decoding, and network transport are not implemented in this workspace yet.
+The original prototype, design assets, screenshots, and building notes are grouped under [`legacy/`](legacy/). New development lives in `packages/`.
 
-Use pnpm 11.19.0 to install dependencies and check the TypeScript definitions:
+`packages/protocol` currently contains the `PatioPacketV1` types, message and codec identifiers, packet envelope constants, and byte/Base64 conversion helpers. Packet encoding, decoding, and network transport are not implemented in this workspace yet.
+
+Use Node.js 24 and pnpm 11.19.0 to install dependencies, check the TypeScript definitions, and run the conversion tests:
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm typecheck
+pnpm test
 ```
 
 ---
