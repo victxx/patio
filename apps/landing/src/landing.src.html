@@ -1,0 +1,1682 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#110f0e">
+<title>Patio Station</title>
+<meta name="description" content="A tiny live radio that broadcasts audio and video through pending Ethereum transactions.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&display=swap">
+<style>
+@font-face{font-family:"Geist Pixel";src:url(data:font/woff2;base64,{{FONT_PX}}) format("woff2");font-weight:100 900;font-display:swap}
+@font-face{font-family:"TerminalGrotesque";src:url(data:font/ttf;base64,{{FONT_TG}}) format("truetype");font-weight:400;font-display:swap}
+
+:root{
+  color-scheme:dark;
+  --ink:#110f0e;
+  --panel:#1c1817;
+  --panel-2:#272120;
+  --maroon:#4a2322;
+  --cream:#f3ead6;
+  --muted:#a89d93;
+  --dim:#7a706a;
+  --red:#ff2b2b;
+  --coral:#ff5148;
+  --deep:#8f0e17;
+  --line:rgba(243,234,214,.12);
+  --line-strong:rgba(243,234,214,.3);
+  --pixel:"Geist Pixel","Geist Mono",ui-monospace,monospace;
+  --grotesk:"TerminalGrotesque","Arial Narrow",Arial,sans-serif;
+  --mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --wrap:1180px;
+  --ease-out:cubic-bezier(0.23,1,0.32,1);
+  --ease-in-out:cubic-bezier(0.77,0,0.175,1);
+  --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--ink)}
+body{
+  background:var(--ink);color:var(--cream);
+  font-family:var(--pixel);font-size:16px;line-height:1.5;letter-spacing:-0.01em;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--coral);outline-offset:3px;border-radius:4px}
+::selection{background:var(--red);color:var(--cream)}
+.num{font-variant-numeric:tabular-nums}
+/* Geist Pixel ships without tabular figures: box every digit to the same width so live values never jiggle */
+.tn{display:inline-block;width:1ch;text-align:center}
+
+.wall{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(rgba(0,0,0,.55) 1px,transparent 1.4px) 0 0/4px 4px,
+    linear-gradient(180deg,rgba(17,15,14,.80),rgba(17,15,14,.9) 60%,rgba(17,15,14,.97)),
+    url(data:image/jpeg;base64,{{BG}}) center/cover no-repeat;
+  filter:saturate(.8);
+}
+.page{--gut:clamp(16px,4vw,40px);position:relative;z-index:1;padding-inline:var(--gut)}
+.bleed{margin-inline:calc(var(--gut) * -1)}
+.live-block{margin-top:0}
+.wrap{max-width:var(--wrap);margin-inline:auto}
+
+/* ---------- Nav ---------- */
+.nav{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-block:22px}
+.wordmark{display:inline-flex;gap:.18em;font-family:var(--grotesk);font-size:25px;letter-spacing:-0.02em;text-decoration:none;line-height:1;white-space:nowrap}
+.wordmark span{-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.wm-patio{background-image:linear-gradient(var(--red),var(--red))}
+.wm-station{background-image:linear-gradient(90deg,var(--red),#fff4f0)}
+/* nav glyphs: tiny wireframe instruments, 24×16 real pixels shown at 2× */
+.glyphs{flex:1;display:flex;align-items:center;justify-content:space-evenly;max-width:560px;margin-inline:auto;padding-inline:24px}
+.glyph{display:grid;place-items:center;padding:8px 4px;cursor:default}
+.glyph canvas{width:24px;height:16px;image-rendering:pixelated;display:block}
+@media (max-width:900px){.glyphs{display:none}}
+.nav-links{display:flex;align-items:center;gap:clamp(14px,2.5vw,28px);font-size:14px;color:var(--muted)}
+.nav-links a{text-decoration:none}
+.onair{display:inline-flex;align-items:center;gap:8px;height:30px;font-size:13px;color:#b6aaa7;white-space:nowrap;padding:0 11px 0 10px;border-radius:999px;
+  background:rgba(14,7,9,.66);-webkit-backdrop-filter:blur(5px) saturate(1.08);backdrop-filter:blur(5px) saturate(1.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 10px 30px rgba(0,0,0,.22)}
+/* pixel status dot: blinks on the beat, no smooth ring */
+.pxdot{width:8px;height:8px;flex:none;color:var(--red);shape-rendering:crispEdges;animation:blink 1.2s steps(1,end) infinite}
+@keyframes blink{50%{opacity:.35}}
+.dot{position:relative;flex:none;width:7px;height:7px;border-radius:50%;background:var(--red)}
+.dot::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--red);opacity:.5;animation:ring 2.2s var(--ease-out) infinite}
+@keyframes ring{from{transform:scale(1);opacity:.5}to{transform:scale(3.2);opacity:0}}
+
+/* ---------- Buttons ---------- */
+.btn{
+  position:relative;display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  font-family:var(--grotesk);font-size:21px;line-height:1;letter-spacing:-0.01em;text-decoration:none;
+  padding:15px 28px;border-radius:999px;border:1px solid transparent;
+  transition:transform 160ms var(--ease-out);white-space:nowrap;-webkit-tap-highlight-color:transparent;
+}
+.btn:active{transform:scale(0.97)}
+.btn-primary{
+  isolation:isolate;overflow:hidden;color:#fff;padding-left:24px;
+  background:linear-gradient(100deg,#e73f39,#ff5148 48%,#ff746c);
+  box-shadow:0 10px 30px -12px rgba(255,81,72,.8),inset 0 1px 0 rgba(255,255,255,.25);
+}
+.btn-primary::after{content:"";position:absolute;inset:0;z-index:-1;background:var(--grain) 0 0/200px 200px;opacity:.16;mix-blend-mode:overlay;pointer-events:none}
+.btn .ico{width:16px;height:16px;flex:none;shape-rendering:crispEdges;transform:translateY(-1px)}
+/* same glass pill as the app's secondary controls */
+.btn-ghost{color:var(--cream);padding-left:24px;background:rgba(14,7,9,.66);-webkit-backdrop-filter:blur(5px) saturate(1.08);backdrop-filter:blur(5px) saturate(1.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 10px 30px rgba(0,0,0,.22)}
+@media (hover:hover) and (pointer:fine){
+  .nav-links a:hover{color:var(--cream)}
+  .btn-primary:hover{background:linear-gradient(100deg,#ef4640,#ff5b52 48%,#ff8078)}
+  .btn-ghost:hover{background:rgba(34,20,22,.78)}
+}
+
+/* ---------- Hero ---------- */
+.hero{position:relative;display:grid;place-items:center;text-align:center;min-height:min(calc(100svh - 150px),800px);padding-block:clamp(40px,6vw,72px) clamp(72px,9vw,120px)}
+.cable-divider{position:relative;height:clamp(150px,16vw,220px);margin:0 calc(var(--gut) * -1) clamp(40px,6vw,80px)}
+.cable{position:absolute;inset:0;width:100%;height:100%;display:block}
+.hero-inner{position:relative;z-index:1;display:grid;gap:34px;justify-items:center;max-width:1000px;margin-inline:auto}
+h1{
+  margin:0;font-weight:inherit;font-size:clamp(46px,7.2vw,104px);line-height:.95;letter-spacing:-0.01em;
+  text-wrap:balance;
+}
+h1 .accent,h2 .accent,h3 .accent{color:var(--red)}
+h1{position:relative}
+h1 .w.accent{position:relative}
+/* marker scribble in pixels under "radio." — drawn in JS, part of the force effect */
+.scribble{position:absolute;left:-5%;width:110%;top:80%;height:.46em;pointer-events:none}
+.scribble canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
+.gl .scribble{visibility:hidden}
+/* WebGL title: the canvas draws the words; DOM text stays for selection and screen readers */
+.title-gl{position:absolute;pointer-events:none}
+.gl,.gl .accent{color:transparent!important;text-shadow:none!important}
+.gl::selection,.gl *::selection{color:var(--cream)}
+.final h2{position:relative}
+
+/* Edge fog: top and bottom bands blur while you scroll, stronger the faster you go, stronger toward the
+   left/right sides than the middle. Stacked backdrop blurs, each masked to its own band. Idle = invisible. */
+.fog{position:fixed;left:0;right:0;height:min(24vh,210px);z-index:40;pointer-events:none;--f:0}
+.fog.b{bottom:0}
+.fog.t{top:0;transform:scaleY(-1)}
+.fog i{position:absolute;inset:0;opacity:var(--f);
+  -webkit-mask-composite:source-in;mask-composite:intersect}
+.fog i:nth-child(1){-webkit-backdrop-filter:blur(0.8px);backdrop-filter:blur(0.8px);-webkit-mask-image:linear-gradient(transparent 0%,#000 16%,#000 34%,transparent 50%),linear-gradient(90deg,#000,rgba(0,0,0,.28) 50%,#000);mask-image:linear-gradient(transparent 0%,#000 16%,#000 34%,transparent 50%),linear-gradient(90deg,#000,rgba(0,0,0,.28) 50%,#000)}
+.fog i:nth-child(2){-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);-webkit-mask-image:linear-gradient(transparent 16%,#000 34%,#000 50%,transparent 66%),linear-gradient(90deg,#000,rgba(0,0,0,.28) 50%,#000);mask-image:linear-gradient(transparent 16%,#000 34%,#000 50%,transparent 66%),linear-gradient(90deg,#000,rgba(0,0,0,.28) 50%,#000)}
+.fog i:nth-child(3){-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);-webkit-mask-image:linear-gradient(transparent 34%,#000 50%,#000 66%,transparent 84%),linear-gradient(90deg,#000,rgba(0,0,0,.28) 50%,#000);mask-image:linear-gradient(transparent 34%,#000 50%,#000 66%,transparent 84%),linear-gradient(90deg,#000,rgba(0,0,0,.28) 50%,#000)}
+.fog i:nth-child(4){-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);-webkit-mask-image:linear-gradient(transparent 50%,#000 66%,#000 84%,transparent 100%),linear-gradient(90deg,#000,rgba(0,0,0,.28) 50%,#000);mask-image:linear-gradient(transparent 50%,#000 66%,#000 84%,transparent 100%),linear-gradient(90deg,#000,rgba(0,0,0,.28) 50%,#000)}
+.fog i:nth-child(5){-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);-webkit-mask-image:linear-gradient(transparent 66%,#000 84%),linear-gradient(90deg,#000,rgba(0,0,0,.28) 50%,#000);mask-image:linear-gradient(transparent 66%,#000 84%),linear-gradient(90deg,#000,rgba(0,0,0,.28) 50%,#000)}
+/* chromatic fringe on text near an edge while moving; --c is set per element */
+.cfx{text-shadow:calc(var(--c,0) * 1px) 0 calc(var(--c,0) * 1.4px) rgba(255,30,60,.6),calc(var(--c,0) * -1px) 0 calc(var(--c,0) * 1.4px) rgba(40,200,255,.55)}
+/* the mempool keeps a vertical motion smear with chromatic split */
+@media (prefers-reduced-motion:reduce){.fog{display:none}}
+
+.cta-row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:center}
+.hero-sub{margin:10px 0 0;font-size:clamp(20px,2vw,26px);line-height:1.4;color:#cdc2b4;max-width:34ch;text-wrap:balance}
+.hero-note{margin:0;font-size:13px;color:var(--dim);max-width:90ch;text-wrap:pretty}
+
+/* ---------- Live strip ---------- */
+.strip{margin:0;padding-inline:var(--gut);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch;border-block:1px solid var(--line);background:rgba(17,15,14,.6);backdrop-filter:blur(4px)}
+.stat{padding:16px 18px;display:grid;gap:4px;border-left:1px solid var(--line)}
+.stat:nth-child(3n+1){border-left:0;padding-left:0}
+.stat:nth-child(n+4){border-top:1px solid var(--line)}
+.live-dot{display:inline-flex;align-items:center;gap:5px;margin-left:8px;color:var(--red);letter-spacing:0}
+.live-dot .pxdot{width:6px;height:6px}
+.stat dt{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+.stat dd{margin:0;font-size:18px;transition:color 700ms var(--ease-out)}
+.stat dd.flash{color:var(--red);transition:none}
+.stat dd small{font-size:12px;color:var(--muted)}
+.src{display:flex;align-items:center;gap:8px;padding:0 18px;font-size:12px;color:var(--muted);border-left:1px solid var(--line);white-space:nowrap}
+.src .dot{width:6px;height:6px}
+.src[data-mode="sim"] .dot{background:var(--dim)}
+.src[data-mode="sim"] .dot::after{display:none}
+
+.ticker-label{position:absolute;left:0;top:0;bottom:0;z-index:2;display:flex;align-items:center;gap:8px;padding:0 18px 0 var(--gut);font-size:12px;color:var(--cream);background:linear-gradient(90deg,var(--ink) 70%,transparent)}
+.ticker{position:relative;overflow:hidden;border-bottom:1px solid var(--line);
+  }
+.ticker-track{display:flex;width:max-content;animation:marquee 40s linear infinite}
+.ticker.paused .ticker-track{animation-play-state:paused}
+.ticker-set{display:flex;flex:none}
+.tx{display:inline-flex;align-items:center;gap:10px;padding:12px 22px;font-size:12px;color:var(--muted);white-space:nowrap;border-right:1px solid var(--line)}
+.tx .h{font-family:var(--mono);color:var(--cream)}
+.tx .p{color:#ffb3ad}
+.tx .sq.c{background:var(--cream)}
+.tx .sq{width:6px;height:6px;background:var(--red)}
+@keyframes marquee{to{transform:translateX(-50%)}}
+
+/* ---------- Sections ---------- */
+section{padding-block:clamp(130px,17vw,230px)}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;font-size:14px;color:var(--red);margin:0 0 18px}
+.eyebrow::before{content:"";width:8px;height:8px;background:var(--red)}
+h2{margin:0;font-weight:inherit;font-size:clamp(40px,6vw,76px);line-height:1;letter-spacing:-0.01em;text-wrap:balance;max-width:16ch}
+h2.two{max-width:none}
+.sub{margin:18px 0 0;font-size:17px;color:var(--muted);max-width:46ch;text-wrap:pretty}
+
+/* Mempool */
+.pool-card{margin-top:48px;border-radius:22px;overflow:hidden;background:rgba(36,24,25,.62);-webkit-backdrop-filter:blur(8px) saturate(1.1);backdrop-filter:blur(8px) saturate(1.1);box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 24px 60px -20px rgba(0,0,0,.6)}
+.pool-canvas{display:block;width:100%;height:clamp(300px,38vw,440px)}
+.pool-foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px 24px;padding:16px 24px 20px;font-size:13px;color:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 20px}
+.legend span{display:inline-flex;align-items:center;gap:8px}
+.legend i{width:8px;height:8px;background:rgba(243,234,214,.7)}
+.legend i.r{background:var(--red)}
+.legend i.b{width:14px;height:9px;background:rgba(243,234,214,.14);border-radius:3px}
+.countdown{color:var(--cream)}
+
+/* Signal path */
+.path{--p:0;position:relative;margin-top:60px}
+.path-steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
+.path-line,.path-fill{position:absolute;left:28px;right:28px;top:27px;height:3px;border-radius:3px}
+.path-line{background:var(--line)}
+.path-fill{background:linear-gradient(90deg,var(--deep),var(--red));transform-origin:0 50%;transform:scaleX(var(--p))}
+.path-packet{position:absolute;top:24px;left:28px;width:9px;height:9px;background:var(--cream);transform:translateX(calc(var(--p) * (var(--len, 900px)) - 4px));box-shadow:0 0 12px rgba(255,43,43,.9)}
+.step{position:relative;padding-right:18px;display:grid;gap:8px;align-content:start}
+.step-n{width:56px;height:56px;border-radius:12px;display:grid;place-items:center;position:relative;z-index:1;background:rgba(36,24,25,.62);-webkit-backdrop-filter:blur(8px) saturate(1.1);backdrop-filter:blur(8px) saturate(1.1);box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 24px 60px -20px rgba(0,0,0,.6);font-size:22px;color:var(--muted);transition:background-color 240ms ease,color 240ms ease}
+.step.lit .step-n{background:rgba(74,35,34,.85);color:var(--red)}
+.step h3{margin:10px 0 0;font-weight:inherit;font-size:24px;line-height:1.1;color:var(--muted);transition:color 240ms ease}
+.step.lit h3{color:var(--cream)}
+.step p{margin:0;font-size:15px;color:var(--muted)}
+
+/* Packet inspector */
+.packet-grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:clamp(32px,5vw,72px);align-items:center}
+.inspector{border-radius:22px;overflow:hidden;font-size:14px;background:rgba(36,24,25,.62);-webkit-backdrop-filter:blur(8px) saturate(1.1);backdrop-filter:blur(8px) saturate(1.1);box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 24px 60px -20px rgba(0,0,0,.6)}
+.insp-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 22px 10px}
+.pending{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:#ffb3ad;background:rgba(255,43,43,.14);padding:4px 11px;border-radius:999px}
+.pending .dot{width:6px;height:6px}
+.insp-rows{display:grid;grid-template-columns:auto 1fr;margin:0}
+.insp-rows{margin:0 10px!important;border-radius:14px;background:rgba(243,234,214,.035)}
+.insp-rows dt,.insp-rows dd{padding:10px 14px;margin:0}
+.insp-rows dt{color:var(--dim);font-size:13px}
+.insp-rows dd{font-family:var(--mono);font-size:13px;text-align:right;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.calldata{padding:18px 22px 22px;display:grid;gap:10px}
+.calldata-label{display:flex;justify-content:space-between;color:var(--dim);font-size:13px;gap:10px}
+.hex{font-family:var(--mono);font-size:12.5px;line-height:1.75;color:var(--muted);word-break:break-all;margin:0;max-height:150px;overflow:hidden;-webkit-mask-image:linear-gradient(180deg,#000 65%,transparent);mask-image:linear-gradient(180deg,#000 65%,transparent)}
+.hex .magic{color:var(--ink);background:var(--red);border-radius:3px;padding:1px 3px}
+.hex .webm{color:var(--cream)}
+.hex .fresh{color:var(--cream);background:rgba(255,43,43,.18);transition:color 900ms var(--ease-out),background-color 900ms var(--ease-out)}
+.hex .fresh.settled{color:var(--muted);background:transparent}
+.callout{display:flex;gap:10px;align-items:baseline;font-size:13px;color:var(--muted)}
+.callout .swatch{flex:none;width:10px;height:10px;border-radius:2px;background:var(--red);transform:translateY(1px)}
+.callout code{font-family:var(--mono);color:var(--cream)}
+.tag-example{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+
+/* Cast / Listen */
+.duo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin-top:52px}
+.panel{position:relative;isolation:isolate;overflow:hidden;background:rgba(24,20,19,.92);border:1px solid var(--line);border-radius:20px;padding:clamp(22px,3vw,32px);display:grid;gap:20px;align-content:start}
+.panel::after{content:"";position:absolute;inset:0;z-index:-1;background:var(--grain) 0 0/200px 200px;opacity:.05;mix-blend-mode:overlay;pointer-events:none}
+.panel-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.panel h3{margin:0;font-weight:inherit;font-size:clamp(34px,4vw,46px);line-height:1}
+.panel .who{font-size:14px;color:var(--muted)}
+.mock{border-radius:22px;padding:24px;display:grid;gap:18px;background:rgba(36,24,25,.62);-webkit-backdrop-filter:blur(8px) saturate(1.1);backdrop-filter:blur(8px) saturate(1.1);box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 24px 60px -20px rgba(0,0,0,.6)}
+.seg{position:relative;display:grid;grid-template-columns:1fr 1fr;background:var(--panel-2);border-radius:999px;padding:4px}
+.seg span{position:relative;z-index:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:14px;padding:10px 0;color:var(--muted);transition:color 200ms ease}
+.sico{width:12px;height:12px;flex:none;shape-rendering:crispEdges}
+.seg{background:rgba(243,234,214,.06)!important}
+.seg span.on{color:var(--ink)}
+.seg > *{min-width:0}
+.seg::before{content:"";position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:999px;background:var(--cream);transition:transform 320ms var(--ease-in-out)}
+.seg[data-i="1"]::before{transform:translateX(100%)}
+.mock-row{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px}
+.mock-row .k{color:var(--dim)}
+.slider{position:relative;height:4px;background:var(--panel-2);border-radius:4px}
+.slider i{position:absolute;inset:0;background:var(--coral);border-radius:4px;transform-origin:0 50%;transform:scaleX(.38)}
+.slider b{position:absolute;left:38%;top:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:var(--cream);box-shadow:0 2px 6px rgba(0,0,0,.6)}
+.eth{font-size:24px;line-height:1}
+.mock-btn{display:flex;align-items:center;justify-content:center;height:48px;border-radius:999px;font-family:var(--grotesk);font-size:20px;letter-spacing:-0.01em;background:var(--cream);color:var(--ink);transition:background-color 240ms ease,color 240ms ease}
+.mock-btn[data-state="live"]{background:var(--red);color:var(--cream)}
+.mock-btn .lbl{display:inline-flex;align-items:center;gap:10px;transition:opacity 160ms ease,filter 160ms ease,transform 160ms var(--ease-out)}
+.mock-btn .lbl.swap{opacity:0;filter:blur(4px);transform:translateY(4px)}
+.mock-btn .dot{display:none;background:var(--cream)}
+.mock-btn .dot::after{background:var(--cream)}
+.mock-btn[data-state="live"] .dot{display:block}
+.progress{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.progress span{display:grid;gap:6px;font-size:12px;color:var(--dim);transition:color 240ms ease}
+.progress span::before{content:"";height:3px;border-radius:3px;background:var(--panel-2);transition:background-color 240ms ease}
+.progress span.done{color:var(--muted)}
+.progress span.done::before{background:var(--coral)}
+.player{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center}
+.player-card{gap:14px}
+.pc-stage{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:start}
+.pc-side{display:grid;gap:6px;justify-items:start;line-height:1}
+.pc-side.r{justify-items:end}
+.pc-kinds{display:inline-flex;gap:10px;color:var(--muted)}
+.pc-kinds .sico{width:14px;height:14px}
+.player-card .tv{width:176px;max-width:100%;border-radius:12px}
+.player-card .bars{height:22px}
+.pc-bar{display:flex;align-items:center;gap:8px}
+.pc-bar .play{width:34px;height:34px}
+.pc-bar .play svg{width:12px;height:12px}
+.pc-url{flex:1;min-width:0;display:flex;align-items:center;gap:8px;height:34px;padding:0 6px 0 12px;border-radius:10px;background:rgba(243,234,214,.05);color:var(--muted)}
+.pc-url .sico{width:11px;height:11px;flex:none}
+.pc-url-text{flex:1;min-width:0;font-family:var(--mono);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-url-tag{flex:none;font-size:11px;color:var(--dim);padding:3px 8px;border-radius:6px;background:rgba(243,234,214,.06)}
+.pc-copy{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:10px;background:rgba(243,234,214,.08);color:var(--cream)}
+.pc-copy .sico{width:13px;height:13px}
+.pc-wallet{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:12px;padding-top:12px;border-top:1px solid rgba(243,234,214,.06)}
+.pc-wl{display:inline-flex;align-items:center;gap:8px;color:var(--dim)}
+.pc-wl .sico{width:12px;height:12px}
+.pc-wv{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.pc-title{font-size:18px}
+.pc-spk{color:var(--muted);display:inline-flex}
+.pc-spk .sico{width:14px;height:14px}
+.tv{width:160px;max-width:100%;aspect-ratio:4/3;border-radius:6px;background:#000;outline:1px solid rgba(255,255,255,.1);outline-offset:-1px;image-rendering:pixelated;display:block}
+.player-meta{display:grid;gap:8px;min-width:0}
+.live-badge{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--red)}
+.player-sub{font-family:var(--mono);font-size:12px;color:var(--dim);overflow-wrap:anywhere}
+.bars{display:flex;align-items:flex-end;gap:3px;height:28px}
+.bars i{flex:1;height:100%;background:var(--coral);border-radius:2px;opacity:.85;transform-origin:50% 100%;transform:scaleY(.3);transition:transform 110ms linear}
+.play{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--cream);color:var(--ink);flex:none}
+.play svg{width:16px;height:16px;transform:translateX(1.5px)}
+.player-controls{display:flex;align-items:center;gap:14px}
+.time{font-size:14px;color:var(--muted)}
+
+/* Dial */
+.dial{position:relative;height:210vh;padding-block:0}
+.dial-sticky{position:sticky;top:0;min-height:100vh;display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:clamp(32px,5vw,72px);align-items:center}
+.dial-copy{display:grid;gap:22px;justify-items:start}
+.dial-copy .eyebrow{margin:0}
+.dial-copy .sub{margin:0;min-height:3em}
+.dial-seg{width:280px}
+.dial-seg button{position:relative;z-index:1;border:0;background:none;cursor:pointer;font:inherit;font-size:15px;padding:9px 0;color:var(--muted);transition:color 200ms ease}
+.dial-seg button.on{color:var(--ink)}
+.dial-meter{width:280px;height:3px;border-radius:3px;background:var(--panel-2);overflow:hidden}
+.dial-meter i{display:block;height:100%;background:var(--coral);transform-origin:0 50%;transform:scaleX(0)}
+.dial-open{font-size:14px;color:var(--muted);text-decoration:none}
+@media (hover:hover) and (pointer:fine){.dial-open:hover{color:var(--cream)}}
+.dial-stage{position:relative;width:min(540px,100%);justify-self:center}
+.dial-stage .mock{padding:26px}
+@media (max-width:980px){
+  .dial{height:190vh}
+  .dial-sticky{grid-template-columns:1fr;align-content:center;gap:28px;padding-block:24px}
+}
+
+/* News */
+.news-head{display:flex;justify-content:space-between;align-items:end;gap:24px;flex-wrap:wrap}
+.news-nav{display:flex;gap:8px}
+.news-nav button{width:44px;height:44px;display:grid;place-items:center;border:0;border-radius:50%;cursor:pointer;color:var(--cream);background:rgba(14,7,9,.66);box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 10px 30px rgba(0,0,0,.22);transition:transform 160ms var(--ease-out)}
+.news-nav button:active{transform:scale(0.95)}
+.news-nav svg{width:12px;height:12px;shape-rendering:crispEdges}
+@media (hover:hover) and (pointer:fine){.news-nav button:hover{background:rgba(34,20,22,.78)}}
+.news{margin:44px calc(var(--gut) * -1) 0;padding:4px var(--gut) 18px;display:grid;grid-auto-flow:column;grid-auto-columns:min(380px,84vw);gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}
+.news::-webkit-scrollbar{display:none}
+.news-card{scroll-snap-align:start;display:grid;grid-template-columns:96px 1fr;gap:16px;align-items:start;padding:18px;border-radius:20px;background:rgba(36,24,25,.62);-webkit-backdrop-filter:blur(8px) saturate(1.1);backdrop-filter:blur(8px) saturate(1.1);box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 24px 60px -20px rgba(0,0,0,.6)}
+.news-img{width:96px;height:96px;border-radius:6px;image-rendering:pixelated;outline:1px solid rgba(255,255,255,.1);outline-offset:-1px;cursor:pointer;background:#000;display:block}
+.news-body{display:grid;gap:8px;min-width:0}
+.news-tag{font-size:12px;color:var(--red)}
+.news-tag.use{color:var(--cream)}
+.news-card h3{margin:0;font-weight:inherit;font-size:17px;line-height:1.3}
+.news-fix-wrap{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows 320ms var(--ease-out),opacity 220ms ease}
+.news-fix-wrap>*{min-height:0;overflow:hidden}
+.news-card.open .news-fix-wrap{grid-template-rows:1fr;opacity:1}
+@media (hover:hover) and (pointer:fine){.news-card:hover .news-fix-wrap{grid-template-rows:1fr;opacity:1}}
+.news-fix{margin:0;font-size:14px;color:var(--muted);padding-top:4px}
+.news-fix b{font-weight:inherit;color:var(--coral)}
+.news-note{margin:16px 0 0;font-size:13px;color:var(--dim);max-width:60ch}
+/* Why */
+.why{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:52px;border-top:1px solid var(--line)}
+.why article{padding:30px 28px 0 0;display:grid;gap:10px;align-content:start}
+.why article+article{padding-left:28px;border-left:1px solid var(--line)}
+.why h3{margin:0;font-weight:inherit;font-size:28px;line-height:1.1}
+.why p{margin:0;color:var(--muted);font-size:16px}
+
+/* History */
+.history{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:clamp(32px,5vw,72px);align-items:stretch}
+.timeline{position:relative;list-style:none;margin:0;padding:0}
+/* dashed pixel rail */
+.timeline::before{content:"";position:absolute;left:0;top:10px;bottom:0;width:4px;background:repeating-linear-gradient(to bottom,var(--red) 0 4px,transparent 4px 10px);opacity:.75}
+.timeline li{position:relative;padding:0 0 30px 28px}
+.timeline li:last-child{padding-bottom:0}
+/* pixel node: a 12px square ring, drawn with box-shadow pixels */
+.timeline li::before{content:"";position:absolute;left:-4px;top:2px;width:12px;height:12px;background:var(--red);box-shadow:inset 0 0 0 4px var(--red),inset 0 0 0 8px var(--ink);clip-path:polygon(0 4px,4px 4px,4px 0,8px 0,8px 4px,12px 4px,12px 8px,8px 8px,8px 12px,4px 12px,4px 8px,0 8px)}
+.timeline .yr{font-size:14px;color:var(--red)}
+.timeline p{margin:6px 0 0;color:var(--muted);font-size:15px;max-width:48ch}
+.timeline a{color:var(--cream);text-decoration-color:var(--line-strong);text-underline-offset:3px}
+.links{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.links a{font-size:13px;text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:5px 12px;color:var(--muted)}
+@media (hover:hover) and (pointer:fine){
+  .links a:hover{color:var(--cream);border-color:var(--line-strong)}
+  .timeline a:hover{text-decoration-color:var(--coral)}
+  footer a:hover{color:var(--cream)}
+}
+
+.final{display:grid;gap:30px;justify-items:center;text-align:center}
+.final{gap:clamp(44px,5vw,64px)!important}
+.final h2{max-width:none;font-size:clamp(46px,7.2vw,104px);line-height:.95}
+.final .cta-row{gap:22px}
+.final .btn{font-size:26px;padding:20px 36px 20px 30px;gap:12px}
+.final .btn .ico{width:20px;height:20px}
+
+footer{padding-block:26px 34px;display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:space-between;font-size:13px;color:var(--dim)}
+footer a{text-decoration:none;color:var(--muted)}
+footer nav{display:flex;gap:20px;flex-wrap:wrap}
+
+/* Dither reveal: JS steps an ordered-dither mask from empty to solid */
+.js .reveal{-webkit-mask-repeat:repeat;mask-repeat:repeat}
+
+/* ---------- Responsive ---------- */
+@media (max-width:980px){
+  .path-steps{grid-template-columns:1fr;gap:28px}
+  .path-line,.path-fill{left:27px;right:auto;top:28px;bottom:28px;width:3px;height:auto}
+  .path-fill{background:linear-gradient(180deg,var(--deep),var(--red));transform-origin:50% 0;transform:scaleY(var(--p))}
+  .path-packet{left:24px;top:28px;transform:translateY(calc(var(--p) * (var(--len, 600px)) - 4px))}
+  .step{grid-template-columns:56px 1fr;column-gap:20px;padding-right:0}
+  .step-n{grid-row:span 2}
+  .step h3{margin-top:4px}
+  .packet-grid,.history,.duo,.why{grid-template-columns:1fr}
+  .why article,.why article+article{padding:24px 0;border-left:0;border-bottom:1px solid var(--line)}
+}
+@media (max-width:620px){
+  .nav-links .hide-sm{display:none}
+  .stat{padding:12px 10px}
+  .stat dd{font-size:15px}
+  .player{grid-template-columns:1fr}
+  .insp-rows dt,.insp-rows dd{padding:8px 14px}
+  .calldata,.insp-head{padding-inline:14px}
+  .btn{padding:14px 22px}
+}
+@media (max-width:440px){.onair{display:none}.nav-links{gap:16px}}
+@media (prefers-reduced-motion:reduce){
+  .dot::after{animation:none;opacity:0}
+  .btn:active{transform:none}
+  .ticker-track{animation:none}
+  .bars i,.seg::before{transition:none}
+}
+</style>
+
+<script>document.documentElement.classList.add("js")</script>
+<div class="wall" aria-hidden="true"></div>
+<div class="fog t" id="fog-t" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+<div class="fog b" id="fog-b" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+<div class="page">
+  <div class="wrap">
+    <header class="nav reveal" data-d="1500">
+      <a class="wordmark" href="https://patiostation.vercel.app/" aria-label="Patio Station"><span class="wm-patio">Patio</span><span class="wm-station">Station</span></a>
+      <div class="glyphs" aria-hidden="true">
+        <span class="glyph" data-g="globe" title="Ethereum network"><canvas width="24" height="16"></canvas></span>
+        <span class="glyph" data-g="signal" title="Broadcast"><canvas width="24" height="16"></canvas></span>
+        <span class="glyph" data-g="wave" title="Live audio"><canvas width="24" height="16"></canvas></span>
+        <span class="glyph" data-g="pool" title="Mempool"><canvas width="24" height="16"></canvas></span>
+      </div>
+      <nav class="nav-links" aria-label="Primary">
+        <a href="https://patiostation.vercel.app/">Listen</a>
+        <a href="https://patiostation.vercel.app/cast">Broadcast</a>
+        <a class="hide-sm" href="https://hoodi-faucet.pk910.de/" title="Free Hoodi testnet ETH, no account needed">Faucet ↗</a>
+        <span class="onair" title="Hoodi base fee + priority fee"><svg class="pxdot" viewBox="0 0 5 5" aria-hidden="true"><path d="M1 0h3v1h1v3h-1v1h-3v-1h-1v-3h1z" fill="currentColor"/></svg><span id="nav-gas" class="num">Hoodi</span></span>
+      </nav>
+    </header>
+
+    <section class="hero" id="hero" aria-labelledby="hero-title">
+      <div class="hero-inner">
+        <h1 id="hero-title" class="reveal" data-cell="9" data-dur="1700" data-d="150"><span class="w">Ethereum</span> <span class="w">is</span> <span class="w">the</span> <span class="w accent">radio.<span class="scribble" aria-hidden="true"><canvas></canvas></span></span></h1>
+        <p class="hero-sub reveal" data-d="900">Live audio and tiny video broadcast through Ethereum’s mempool.</p>
+        <div class="cta-row reveal" data-d="1150">
+          <a class="btn btn-primary" href="https://patiostation.vercel.app/cast"><svg class="ico mic" viewBox="0 0 12 12" aria-hidden="true"><path d="M4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM7 0h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM8 1h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM8 2h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM8 3h1v1h-1zM1 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM10 4h1v1h-1zM1 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM8 5h1v1h-1zM10 5h1v1h-1zM1 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1zM10 6h1v1h-1zM2 7h1v1h-1zM9 7h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM5 9h1v1h-1zM6 9h1v1h-1zM5 10h1v1h-1zM6 10h1v1h-1zM3 11h1v1h-1zM4 11h1v1h-1zM5 11h1v1h-1zM6 11h1v1h-1zM7 11h1v1h-1zM8 11h1v1h-1z" fill="currentColor"/></svg>Go live</a>
+          <a class="btn btn-ghost" href="https://patiostation.vercel.app/"><svg class="ico phones" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM7 0h1v1h-1zM8 0h1v1h-1zM2 1h1v1h-1zM9 1h1v1h-1zM1 2h1v1h-1zM10 2h1v1h-1zM0 3h1v1h-1zM11 3h1v1h-1zM0 4h1v1h-1zM11 4h1v1h-1zM0 5h1v1h-1zM11 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM9 6h1v1h-1zM10 6h1v1h-1zM11 6h1v1h-1zM0 7h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM8 7h1v1h-1zM9 7h1v1h-1zM10 7h1v1h-1zM11 7h1v1h-1zM0 8h1v1h-1zM1 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM8 8h1v1h-1zM9 8h1v1h-1zM10 8h1v1h-1zM11 8h1v1h-1zM0 9h1v1h-1zM1 9h1v1h-1zM2 9h1v1h-1zM3 9h1v1h-1zM8 9h1v1h-1zM9 9h1v1h-1zM10 9h1v1h-1zM11 9h1v1h-1zM0 10h1v1h-1zM1 10h1v1h-1zM2 10h1v1h-1zM9 10h1v1h-1zM10 10h1v1h-1zM11 10h1v1h-1z" fill="currentColor"/></svg>Tune in</a>
+        </div>
+        <p class="hero-note reveal" data-d="1400">Sent as pending transactions on the Hoodi testnet. Listening needs no wallet.</p>
+              </div>
+    </section>
+  </div>
+
+  <!-- MEMPOOL -->
+  <div class="wrap">
+    <section id="mempool" aria-labelledby="mempool-title" style="padding-top:clamp(40px,6vw,90px)">
+      <div class="reveal" data-cell="10">
+        <p class="eyebrow">The mempool</p>
+        <h2 id="mempool-title" class="two">Where transactions wait.<br><span class="accent">Where Patio lives.</span></h2>
+        <p class="sub">Every 12 seconds a block empties the pool. Patio's packets are built to stay behind.</p>
+      </div>
+      <div class="pool-card reveal" data-cell="8">
+        <canvas class="pool-canvas" id="pool" aria-label="Animated view of the Hoodi mempool: pending transactions get swept into blocks while Patio packets stay behind"></canvas>
+        <div class="pool-foot">
+          <div class="legend">
+            <span><i></i>Pending transactions</span>
+            <span><i class="r"></i>Patio packets, replaced not mined</span>
+            <span><i class="b"></i>Blocks</span>
+          </div>
+          <span>Next block <span class="countdown num" id="countdown">~12s</span></span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- HOW -->
+  <div class="wrap">
+    <section id="how" aria-labelledby="how-title" style="padding-top:0">
+      <div class="reveal" data-cell="10">
+        <p class="eyebrow">How it works</p>
+        <h2 id="how-title">Transactions become <span class="accent">packets.</span></h2>
+      </div>
+      <div class="path" id="path">
+        <span class="path-line" aria-hidden="true"></span>
+        <span class="path-fill" aria-hidden="true"></span>
+        <span class="path-packet" aria-hidden="true"></span>
+        <ol class="path-steps">
+          <li class="step reveal"><div class="step-n">1</div><h3>Capture</h3><p>Mic or camera becomes a tiny WebM stream.</p></li>
+          <li class="step reveal"><div class="step-n">2</div><h3>Sign</h3><p>A temporary wallet signs every slice.</p></li>
+          <li class="step reveal"><div class="step-n">3</div><h3>Broadcast</h3><p>Packets wait in the mempool.</p></li>
+          <li class="step reveal"><div class="step-n">4</div><h3>Listen</h3><p>Listeners rebuild the stream.</p></li>
+          <li class="step reveal"><div class="step-n">5</div><h3>Close</h3><p>Leftover ETH comes back.</p></li>
+        </ol>
+      </div>
+    </section>
+  </div>
+
+  <!-- PACKET -->
+  <div class="wrap">
+    <section aria-labelledby="packet-title" style="padding-top:0">
+      <div class="packet-grid">
+        <div class="reveal" data-cell="10">
+          <p class="eyebrow">One packet</p>
+          <h2 id="packet-title">Every second of sound is a <span class="accent">transaction.</span></h2>
+        </div>
+        <figure class="inspector reveal" data-cell="8" style="margin:0" aria-label="Illustrative Patio packet">
+          <div class="insp-head">
+            <span>tx · media packet</span>
+            <span class="pending"><span class="dot" aria-hidden="true"></span>pending</span>
+          </div>
+          <dl class="insp-rows">
+            <dt>Chain</dt><dd>Hoodi · 560048</dd>
+            <dt>From</dt><dd>0x7a3f…c21e</dd>
+            <dt>Nonce</dt><dd id="nonce">1,284</dd>
+            <dt>Value</dt><dd>0 ETH</dd>
+          </dl>
+          <div class="calldata">
+            <div class="calldata-label"><span>Input data</span><span class="tag-example">Illustrative</span></div>
+            <p class="hex" id="hex"><span class="webm">0x</span><span class="magic">1a45dfa3</span><span class="webm">9f4286810142f7810142f2810442f381084282847765626d4287810442858102</span><span id="hex-live"></span></p>
+            <div class="callout"><span class="swatch" aria-hidden="true"></span><span><code>1A 45 DF A3</code> opens every WebM file.</span></div>
+          </div>
+        </figure>
+      </div>
+    </section>
+  </div>
+
+  <!-- DIAL: go on air / tune in, one at a time; scrolling through the section turns the dial -->
+  <div class="wrap">
+    <section class="dial" id="dial" aria-labelledby="dial-title">
+      <div class="dial-sticky">
+        <div class="dial-copy reveal" data-cell="10">
+          <p class="eyebrow">Two sides of the dial</p>
+          <h2 id="dial-title">Go on air, or <span class="accent">tune in.</span></h2>
+          <div class="seg dial-seg" id="dial-seg" data-i="0" role="tablist"><button type="button" role="tab" class="on" data-tab="cast">Go on air</button><button type="button" role="tab" data-tab="listen">Tune in</button></div>
+          <p class="sub" id="dial-sub">Wallet + mic. Approve once and you're live.</p>
+          <div class="dial-meter" aria-hidden="true"><i id="dial-bar"></i></div>
+          <a class="dial-open" id="dial-open" href="https://patiostation.vercel.app/cast">Open the real app ↗</a>
+        </div>
+        <div class="dial-stage">
+          <div class="dial-pane" data-pane="cast">
+            <div class="mock" id="cast-mock" aria-hidden="true">
+            <div class="seg" id="seg-media" data-i="0"><span class="on"><svg class="sico spk" viewBox="0 0 10 10" aria-hidden="true"><path d="M4 0h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM7 1h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM8 2h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM6 3h1v1h-1zM9 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM7 4h1v1h-1zM9 4h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM7 5h1v1h-1zM9 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM6 6h1v1h-1zM9 6h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM8 7h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM7 8h1v1h-1zM4 9h1v1h-1z" fill="currentColor"/></svg>Audio</span><span><svg class="sico cam" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 1h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM0 2h1v1h-1zM5 2h1v1h-1zM8 2h1v1h-1zM0 3h1v1h-1zM5 3h1v1h-1zM7 3h1v1h-1zM8 3h1v1h-1zM0 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM0 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM8 5h1v1h-1zM0 6h1v1h-1zM5 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1zM0 7h1v1h-1zM5 7h1v1h-1zM8 7h1v1h-1zM0 8h1v1h-1zM1 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1z" fill="currentColor"/></svg>Video</span></div>
+            <div class="seg" data-i="1"><span><svg class="sico globe" viewBox="0 0 10 10" aria-hidden="true"><path d="M3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM2 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM7 1h1v1h-1zM1 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM8 2h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM8 3h1v1h-1zM9 3h1v1h-1zM0 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM9 4h1v1h-1zM0 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM9 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1zM9 6h1v1h-1zM1 7h1v1h-1zM4 7h1v1h-1zM5 7h1v1h-1zM8 7h1v1h-1zM2 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM7 8h1v1h-1zM3 9h1v1h-1zM4 9h1v1h-1zM5 9h1v1h-1zM6 9h1v1h-1z" fill="currentColor"/></svg>Public</span><span class="on"><svg class="sico link" viewBox="0 0 10 10" aria-hidden="true"><path d="M6 1h1v1h-1zM7 1h1v1h-1zM8 1h1v1h-1zM5 2h1v1h-1zM9 2h1v1h-1zM6 3h1v1h-1zM9 3h1v1h-1zM3 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM6 5h1v1h-1zM0 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM0 7h1v1h-1zM4 7h1v1h-1zM1 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1z" fill="currentColor"/></svg>Unlisted</span></div>
+            <div class="mock-row"><span class="k">Duration</span><span class="num">5 min</span></div>
+            <div class="slider"><i></i><b></b></div>
+            <div class="mock-row"><span class="k">Temporary Hoodi ETH</span><span class="eth num">0.0018</span></div>
+            <div class="mock-btn" id="mock-btn" data-state="connect"><span class="lbl" id="mock-lbl"><span class="dot"></span><span id="mock-txt" class="num">Connect wallet</span></span></div>
+            <div class="progress" id="progress"><span>Connect</span><span>Check mic</span><span>Prepare</span><span>Live</span></div>
+          </div>
+          </div>
+          <div class="dial-pane" data-pane="listen" hidden>
+            <div class="mock player-card" aria-hidden="true">
+              <div class="pc-stage">
+                <div class="pc-side"><span class="live-badge"><span class="dot"></span>LIVE</span><span class="time num" id="elapsed">03:42</span></div>
+                <canvas class="tv" id="tv" width="80" height="60"></canvas>
+                <div class="pc-side r"><span class="pc-kinds"><svg class="sico spk" viewBox="0 0 10 10" aria-hidden="true"><path d="M4 0h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM7 1h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM8 2h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM6 3h1v1h-1zM9 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM7 4h1v1h-1zM9 4h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM7 5h1v1h-1zM9 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM6 6h1v1h-1zM9 6h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM8 7h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM7 8h1v1h-1zM4 9h1v1h-1z" fill="currentColor"/></svg><svg class="sico cam" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 1h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM0 2h1v1h-1zM5 2h1v1h-1zM8 2h1v1h-1zM0 3h1v1h-1zM5 3h1v1h-1zM7 3h1v1h-1zM8 3h1v1h-1zM0 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM0 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM8 5h1v1h-1zM0 6h1v1h-1zM5 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1zM0 7h1v1h-1zM5 7h1v1h-1zM8 7h1v1h-1zM0 8h1v1h-1zM1 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1z" fill="currentColor"/></svg></span><span class="time">80×60</span></div>
+              </div>
+              <div class="bars" id="bars"></div>
+              <div class="pc-bar">
+                <span class="play"><svg viewBox="0 0 16 16"><path d="M3 2l11 6-11 6z" fill="currentColor"/></svg></span>
+                <span class="pc-url"><svg class="sico link" viewBox="0 0 10 10" aria-hidden="true"><path d="M6 1h1v1h-1zM7 1h1v1h-1zM8 1h1v1h-1zM5 2h1v1h-1zM9 2h1v1h-1zM6 3h1v1h-1zM9 3h1v1h-1zM3 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM6 5h1v1h-1zM0 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM0 7h1v1h-1zM4 7h1v1h-1zM1 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1z" fill="currentColor"/></svg><span class="pc-url-text">patiostation.vercel.app/…c21e</span><span class="pc-url-tag">Unlisted</span></span>
+                <span class="pc-copy" title="Copy link"><svg class="sico copy" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM7 0h1v1h-1zM2 1h1v1h-1zM7 1h1v1h-1zM2 2h1v1h-1zM7 2h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM7 3h1v1h-1zM0 4h1v1h-1zM5 4h1v1h-1zM7 4h1v1h-1zM0 5h1v1h-1zM5 5h1v1h-1zM7 5h1v1h-1zM0 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1zM0 7h1v1h-1zM5 7h1v1h-1zM0 8h1v1h-1zM1 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1z" fill="currentColor"/></svg></span>
+              </div>
+              <div class="pc-wallet"><span class="pc-wl"><svg class="sico wallet" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 1h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM0 2h1v1h-1zM8 2h1v1h-1zM0 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM8 3h1v1h-1zM0 4h1v1h-1zM6 4h1v1h-1zM8 4h1v1h-1zM9 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM8 5h1v1h-1zM0 6h1v1h-1zM8 6h1v1h-1zM0 7h1v1h-1zM8 7h1v1h-1zM0 8h1v1h-1zM1 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1z" fill="currentColor"/></svg>Broadcaster</span><span class="pc-wv">0x7a3f…c21e · Hoodi</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- WHY -->
+  <div class="wrap">
+    <section aria-labelledby="why-title" style="padding-top:0">
+      <div class="reveal" data-cell="10">
+        <p class="eyebrow">Why bother</p>
+        <h2 id="why-title">A signal nobody <span class="accent">hosts.</span></h2>
+      </div>
+      <div class="why">
+        <article class="reveal"><h3>Hard to <span class="accent">censor</span></h3><p>No stream server to take down.</p></article>
+        <article class="reveal"><h3>Hard to <span class="accent">spoof</span></h3><p>Every packet is signed by the broadcaster.</p></article>
+        <article class="reveal"><h3>A link is the <span class="accent">frequency</span></h3><p>Share the URL. That's the whole setup.</p></article>
+      </div>
+    </section>
+  </div>
+
+  <!-- NEWS: stations get shut down -->
+  <div class="wrap">
+    <section id="news" aria-labelledby="news-title" style="padding-top:0">
+      <div class="news-head">
+        <div class="reveal" data-cell="10">
+          <p class="eyebrow">Off the air</p>
+          <h2 id="news-title" class="two">Stations get shut down.<br><span class="accent">Patio has no station.</span></h2>
+        </div>
+        <div class="news-nav">
+          <button type="button" id="news-prev" aria-label="Previous"><svg viewBox="0 0 6 9" aria-hidden="true"><path d="M3 0h1v1h-1zM2 1h1v1h-1zM1 2h1v1h-1zM0 3h1v3h-1zM1 6h1v1h-1zM2 7h1v1h-1zM3 8h1v1h-1z" fill="currentColor" transform="translate(1 0)"/></svg></button>
+          <button type="button" id="news-next" aria-label="Next"><svg viewBox="0 0 6 9" aria-hidden="true"><path d="M3 0h1v1h-1zM2 1h1v1h-1zM1 2h1v1h-1zM0 3h1v3h-1zM1 6h1v1h-1zM2 7h1v1h-1zM3 8h1v1h-1z" fill="currentColor" transform="translate(5 0) scale(-1 1)"/></svg></button>
+        </div>
+      </div>
+      <div class="news" id="news-list" tabindex="0" aria-label="Censorship cases and how Patio responds"></div>
+      <p class="news-note">Patio can't beat a full internet blackout. It helps when a platform, a station or a publisher is the thing being shut down.</p>
+    </section>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="wrap">
+    <section id="history" aria-labelledby="history-title" style="padding-top:0">
+      <div class="history">
+        <div class="reveal" data-cell="10">
+          <p class="eyebrow">Est. 2024</p>
+          <h2 id="history-title">Born at a hackathon. <span class="accent">Back on air.</span></h2>
+        </div>
+        <ol class="timeline">
+          <li class="reveal">
+            <span class="yr">2024 · ETHDenver</span>
+            <p>Concept by <a href="https://x.com/ariutokintumi">ariutokintumi</a>. Built with <a href="https://x.com/AntoineDeVuyst">Antoine De Vuyst</a>, <a href="https://devfolio.co/@zephyranthes032">Yongjin Chong</a> and <a href="https://victorxva.com/">victorxva</a>.</p>
+            <div class="links">
+              <a href="https://devfolio.co/projects/patio-station-7ec1">ETHDenver project ↗</a>
+              <a href="https://github.com/antron3000/patio">Original repo ↗</a>
+            </div>
+          </li>
+          <li class="reveal">
+            <span class="yr">Now · Hoodi beta</span>
+            <p>Rebuilt by <a href="https://victorxva.com/">victorxva</a>. Audio, tiny video, public and unlisted broadcasts.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+  </div>
+
+  <!-- one cable, as a divider -->
+  <div class="cable-divider" id="cable-wrap" aria-hidden="true"><canvas class="cable" id="cable"></canvas></div>
+
+  <!-- FINAL -->
+  <div class="wrap">
+    <section class="final" aria-labelledby="final-title" style="padding-top:0">
+      <h2 id="final-title" class="reveal" data-cell="12" data-dur="1200"><span class="w">Stay</span> <span class="w">tuned</span> <span class="w accent">(literally)</span></h2>
+      <div class="cta-row reveal" data-d="200">
+        <a class="btn btn-primary" href="https://patiostation.vercel.app/cast"><svg class="ico mic" viewBox="0 0 12 12" aria-hidden="true"><path d="M4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM7 0h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM8 1h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM8 2h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM8 3h1v1h-1zM1 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM10 4h1v1h-1zM1 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM8 5h1v1h-1zM10 5h1v1h-1zM1 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1zM10 6h1v1h-1zM2 7h1v1h-1zM9 7h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM5 9h1v1h-1zM6 9h1v1h-1zM5 10h1v1h-1zM6 10h1v1h-1zM3 11h1v1h-1zM4 11h1v1h-1zM5 11h1v1h-1zM6 11h1v1h-1zM7 11h1v1h-1zM8 11h1v1h-1z" fill="currentColor"/></svg>Go live</a>
+        <a class="btn btn-ghost" href="https://patiostation.vercel.app/"><svg class="ico phones" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM7 0h1v1h-1zM8 0h1v1h-1zM2 1h1v1h-1zM9 1h1v1h-1zM1 2h1v1h-1zM10 2h1v1h-1zM0 3h1v1h-1zM11 3h1v1h-1zM0 4h1v1h-1zM11 4h1v1h-1zM0 5h1v1h-1zM11 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM9 6h1v1h-1zM10 6h1v1h-1zM11 6h1v1h-1zM0 7h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM8 7h1v1h-1zM9 7h1v1h-1zM10 7h1v1h-1zM11 7h1v1h-1zM0 8h1v1h-1zM1 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM8 8h1v1h-1zM9 8h1v1h-1zM10 8h1v1h-1zM11 8h1v1h-1zM0 9h1v1h-1zM1 9h1v1h-1zM2 9h1v1h-1zM3 9h1v1h-1zM8 9h1v1h-1zM9 9h1v1h-1zM10 9h1v1h-1zM11 9h1v1h-1zM0 10h1v1h-1zM1 10h1v1h-1zM2 10h1v1h-1zM9 10h1v1h-1zM10 10h1v1h-1zM11 10h1v1h-1z" fill="currentColor"/></svg>See who's live</a>
+      </div>
+    </section>
+  </div>
+
+  <!-- LIVE STRIP -->
+  <div class="bleed reveal live-block">
+      <dl class="strip" aria-label="Hoodi network">
+        <div class="stat"><dt>Block <span class="live-dot" id="live-dot" hidden><svg class="pxdot" viewBox="0 0 5 5" aria-hidden="true"><path d="M1 0h3v1h1v3h-1v1h-3v-1h-1v-3h1z" fill="currentColor"/></svg>live</span></dt><dd class="num" id="s-block">—</dd></div>
+        <div class="stat"><dt>Base fee</dt><dd class="num" id="s-base">— <small>gwei</small></dd></div>
+        <div class="stat"><dt>Priority fee</dt><dd class="num" id="s-tip">— <small>gwei</small></dd></div>
+        <div class="stat"><dt>Pending</dt><dd class="num" id="s-pending">—</dd></div>
+        <div class="stat"><dt>Queued</dt><dd class="num" id="s-queued">—</dd></div>
+        <div class="stat"><dt>Last block</dt><dd class="num" id="s-txs">— <small>txs</small></dd></div>
+      </dl>
+    <div class="ticker" id="ticker" hidden><span class="ticker-label" id="ticker-label">Pending on Hoodi</span><div class="ticker-track" id="ticker-track"></div></div>
+  </div>
+
+  <div class="wrap">
+    <footer>
+      <span>Patio Station · Experimental beta on Hoodi testnet</span>
+      <nav aria-label="Footer">
+        <a href="https://patiostation.vercel.app/">App</a>
+        <a href="https://github.com/antron3000/patio">GitHub</a>
+        <a href="https://victorxva.com/">victorxva.com</a>
+      </nav>
+    </footer>
+  </div>
+</div>
+
+
+
+<script>
+(() => {
+  const root = document.documentElement;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const finePointer = matchMedia('(hover: hover) and (pointer: fine)').matches;
+  const hex = n => Array.from({ length: n }, () => '0123456789abcdef'[Math.random() * 16 | 0]).join('');
+  const fmt = n => Math.round(n).toLocaleString('en-US');
+  // wrap digits (outside of tags) in fixed-width boxes
+  const tabNums = h => h.replace(/(<[^>]*>)|(\d)/g, (m, tag, d) => tag || `<span class="tn">${d}</span>`);
+  const visible = new Map();
+  const watch = (el, key, cb) => {
+    visible.set(key, true);
+    new IntersectionObserver(([e]) => { visible.set(key, e.isIntersecting); cb && cb(e.isIntersecting); }, { rootMargin: '80px' }).observe(el);
+  };
+  const running = key => visible.get(key) && !document.hidden;
+
+  /* ---------- Dither reveal ----------
+     8×8 ordered dither: 64 mask steps from empty to solid, big square cells.
+     Reads like a low-bandwidth image arriving, which is what Patio is. */
+  function bayer(n) {
+    if (n === 1) return [[0]];
+    const m = bayer(n / 2), out = [];
+    for (let y = 0; y < n; y++) { out.push([]); for (let x = 0; x < n; x++) {
+      const b = m[y % (n / 2)][x % (n / 2)] * 4;
+      out[y].push(b + [[0, 2], [3, 1]][(y < n / 2) ? 0 : 1][(x < n / 2) ? 0 : 1]);
+    } }
+    return out;
+  }
+  const B8 = bayer(8);
+  const maskCache = {};
+  function masks(cell) {
+    if (maskCache[cell]) return maskCache[cell];
+    const c = document.createElement('canvas');
+    c.width = c.height = cell * 8;
+    const g = c.getContext('2d');
+    const out = [];
+    for (let lvl = 0; lvl <= 64; lvl++) {
+      g.clearRect(0, 0, c.width, c.height);
+      g.fillStyle = '#000';
+      for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) if (B8[y][x] < lvl) g.fillRect(x * cell, y * cell, cell, cell);
+      out.push(`url(${c.toDataURL()})`);
+    }
+    return (maskCache[cell] = out);
+  }
+  function setMask(el, url, size) {
+    el.style.webkitMaskImage = el.style.maskImage = url;
+    el.style.webkitMaskSize = el.style.maskSize = size;
+  }
+  const cellOf = el => +(el.dataset.cell || 7);
+  const sizeOf = el => `${cellOf(el) * 8}px ${cellOf(el) * 8}px`;
+  // Reveals are reversible: leave the viewport and the block dithers out of existence,
+  // come back (from either direction) and it dithers in again.
+  const rstate = new WeakMap();
+  const st = el => rstate.get(el) || (rstate.set(el, { shown: false, tok: 0 }), rstate.get(el));
+  let scrollDir = 1; // 1 = scrolling down, -1 = up
+  function hideEl(el) {
+    el.classList.remove('gl');
+    const s = st(el); s.tok++; s.shown = false;
+    if (reduce) { el.style.opacity = 0; return; }
+    setMask(el, masks(cellOf(el))[0], sizeOf(el));
+    el.style.transform = '';
+  }
+  function ditherIn(el, delay = 0, dur = 1150) {
+    const s = st(el); const tok = ++s.tok; s.shown = true;
+    if (reduce) { el.style.transition = 'opacity 300ms ease'; el.style.opacity = 1; return; }
+    const m = masks(cellOf(el)), size = sizeOf(el);
+    const rise = 36 * scrollDir; // arrive from the direction you're scrolling
+    setTimeout(() => {
+      if (tok !== s.tok) return;
+      const t0 = performance.now();
+      (function tick(now) {
+        if (tok !== s.tok) return;
+        const k = Math.min(1, (now - t0) / dur);
+        const e = 1 - Math.pow(1 - k, 3);
+        setMask(el, m[Math.round(e * 64)], size);
+        el.style.transform = `translateY(${(1 - e) * rise}px)`;
+        if (k < 1) requestAnimationFrame(tick);
+        else { setMask(el, 'none', 'auto'); el.style.transform = ''; }
+      })(performance.now());
+    }, delay);
+  }
+  const revealEls = [...document.querySelectorAll('.reveal')];
+  revealEls.forEach(hideEl);
+  // first screen: headline first and slow, then buttons, note, nav, live strip
+  const firstScreen = revealEls.filter(el => el.dataset.d && !el.closest('section:not(.hero)'));
+  firstScreen.forEach(el => ditherIn(el, +el.dataset.d, +(el.dataset.dur || 900)));
+  setTimeout(() => root.classList.add('ready'), 900);
+  const io = new IntersectionObserver(entries => {
+    let i = 0;
+    for (const e of entries) {
+      const s = st(e.target);
+      const tall = e.boundingClientRect.height > innerHeight * 0.8;
+      if (e.isIntersecting && (e.intersectionRatio >= 0.12 || tall)) {
+        if (!s.shown) ditherIn(e.target, i++ * 90);
+      } else if (!e.isIntersecting && s.shown) hideEl(e.target);
+    }
+  }, { threshold: [0, 0.12] });
+  setTimeout(() => revealEls.forEach(el => io.observe(el)), 400);
+
+  /* ---------- Red cable ---------- */
+  const cableWrap = document.getElementById('cable-wrap');
+  const cv = document.getElementById('cable');
+  const ctx = cv.getContext('2d');
+  let W = 0, H = 0, grain = null;
+  function makeGrain() {
+    const g = document.createElement('canvas');
+    g.width = g.height = 96;
+    const gx = g.getContext('2d');
+    const id = gx.createImageData(96, 96);
+    for (let i = 0; i < id.data.length; i += 4) id.data[i + 3] = Math.random() < 0.35 ? 150 : 0;
+    gx.putImageData(id, 0, 0);
+    return ctx.createPattern(g, 'repeat');
+  }
+  function resize() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    const r = cv.getBoundingClientRect();
+    W = r.width; H = r.height;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    grain = makeGrain();
+  }
+  const pull = { x: 0, y: 0, a: 0, vx: 0, vy: 0, va: 0, tx: 0, ty: 0, ta: 0 };
+  if (finePointer && !reduce) {
+    cableWrap.addEventListener('pointermove', e => {
+      const r = cv.getBoundingClientRect();
+      pull.tx = e.clientX - r.left; pull.ty = e.clientY - r.top; pull.ta = 1;
+      if (pull.a < 0.01) { pull.x = pull.tx; pull.y = pull.ty; }
+    });
+    cableWrap.addEventListener('pointerleave', () => { pull.ta = 0; });
+  }
+  function stepSpring(dt) {
+    for (const [p, v, t] of [['x', 'vx', 'tx'], ['y', 'vy', 'ty'], ['a', 'va', 'ta']]) {
+      pull[v] += ((pull[t] - pull[p]) * 120 - pull[v] * 16) * dt;
+      pull[p] += pull[v] * dt;
+    }
+  }
+  // two cables: one above the headline, one below the buttons. Calm in the middle (where the text is),
+  // livelier toward the sides, so they frame the title instead of crossing it.
+  let lanes = [];
+  function measureLanes() {
+    if (!H) return;
+    lanes = [{ base: H / 2, amp: W < 700 ? 22 : 40, ph: 0 }];
+  }
+  function curve(t, lane) {
+    const pts = [];
+    for (let x = -40; x <= W + 40; x += 6) {
+      const u = x / W, side = Math.min(1, Math.abs(u - 0.5) * 2);
+      const env = 0.55 + 0.45 * side;
+      let y = lane.base
+        + lane.amp * env * Math.sin(u * 9 + t * 0.9 + lane.ph)
+        + lane.amp * 0.4 * env * Math.sin(u * 21 - t * 1.3 + lane.ph)
+        + lane.amp * 0.18 * Math.sin(u * 4 + t * 0.3 + lane.ph);
+      if (pull.a > 0.001) {
+        const g = Math.exp(-((x - pull.x) ** 2) / (2 * 150 * 150));
+        const near = 1;
+        y += Math.max(-60, Math.min(60, pull.y - y)) * 0.5 * g * pull.a * near;
+      }
+      pts.push([x, y]);
+    }
+    return pts;
+  }
+  function stroke(pts, w, color, dy = 0) {
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1] + dy);
+    for (let i = 1; i < pts.length - 1; i++) ctx.quadraticCurveTo(pts[i][0], pts[i][1] + dy, (pts[i][0] + pts[i + 1][0]) / 2, (pts[i][1] + pts[i + 1][1]) / 2 + dy);
+    ctx.lineWidth = w; ctx.strokeStyle = color; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.stroke();
+  }
+  const packets = Array.from({ length: 7 }, (_, i) => ({ p: i / 7, lane: 0, s: 0.035 + Math.random() * 0.02 }));
+  const easeOut = x => 1 - Math.pow(1 - x, 4);
+  let reveal = reduce ? 1 : 0;
+  function drawCable(t) {
+    if (!W || !H || !grain) return;
+    if (!lanes.length) measureLanes();
+    ctx.clearRect(0, 0, W, H);
+    const lw = W < 700 ? 8 : 12;
+    const edge = -40 + (W + 80) * easeOut(reveal);
+    const sz = W < 700 ? 5 : 6;
+    lanes.forEach((lane, li) => {
+      const pts = curve(t, lane);
+      if (pts.length < 3) return;
+      ctx.save();
+      ctx.beginPath(); li === 0 ? ctx.rect(0, 0, edge, H) : ctx.rect(W - edge, 0, edge, H); ctx.clip();
+      stroke(pts, lw + 6, 'rgba(0,0,0,.45)', 7);
+      stroke(pts, lw, '#8f0e17');
+      stroke(pts, lw * 0.62, '#e0302d', -lw * 0.12);
+      stroke(pts, lw * 0.18, 'rgba(255,170,160,.55)', -lw * 0.28);
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.fillStyle = grain; ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+      ctx.fillStyle = '#f3ead6';
+      for (const k of packets) {
+        if ((k.lane || 0) !== li) continue;
+        const pt = pts[Math.max(0, Math.min(pts.length - 1, Math.floor((li ? 1 - k.p : k.p) * (pts.length - 1))))];
+        if (!pt) continue;
+        const [x, y] = pt;
+        const visible = li === 0 ? x < edge - 20 : x > W - edge + 20;
+        if (visible) ctx.fillRect(Math.round(x - sz / 2), Math.round(y - sz / 2), sz, sz);
+      }
+    });
+  }
+  watch(cv, 'cable');
+
+  /* ---------- Live Hoodi data (public RPC, no key). Falls back to a labelled simulation. ---------- */
+  const RPC = 'https://ethereum-hoodi-rpc.publicnode.com';
+  // anchor from a real Hoodi block, so the simulated counter stays close to reality
+  const ANCHOR = { n: 3700741, ts: 1790437980 };
+  const estBlock = () => ANCHOR.n + Math.floor((Date.now() / 1000 - ANCHOR.ts) / 12);
+  const net = { live: false, full: null, block: null, base: 1.0, tip: 0.08, pending: 7700, queued: 8500, txs: 140, lastBlockAt: performance.now() - 9000 };
+  const $ = id => document.getElementById(id);
+  function setStat(id, html) {
+    html = tabNums(html);
+    const el = $(id);
+    if (el.innerHTML === html) return;
+    el.innerHTML = html;
+    el.classList.add('flash');
+    requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove('flash')));
+  }
+  function renderStats() {
+    const pre = net.live ? '' : '~';
+    setStat('s-block', net.live ? fmt(net.block) : '~' + fmt(estBlock()));
+    setStat('s-base', `${net.base.toFixed(2)} <small>gwei</small>`);
+    setStat('s-tip', `${net.tip.toFixed(3)} <small>gwei</small>`);
+    setStat('s-pending', pre + fmt(net.pending));
+    setStat('s-queued', pre + fmt(net.queued));
+    setStat('s-txs', `${pre}${fmt(net.txs)} <small>txs${net.full !== null ? ' · ' + Math.round(net.full * 100) + '% full' : ''}</small>`);
+    const gasHtml = tabNums(`${(net.base + net.tip).toFixed(2)} gwei`);
+    if ($('nav-gas').innerHTML !== gasHtml) $('nav-gas').innerHTML = gasHtml;
+    $('live-dot').hidden = !net.live;
+    $('ticker').hidden = !net.live; // the tx ribbon only exists when it's real
+  }
+  async function rpc(method, params = []) {
+    const r = await fetch(RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) });
+    const j = await r.json();
+    if (j.error) throw new Error(j.error.message);
+    return j.result;
+  }
+  async function poll() {
+    try {
+      if (location.hash === '#sim') throw new Error('sim');
+      const [blk, pool, tip] = await Promise.all([
+        rpc('eth_getBlockByNumber', ['latest', false]),
+        rpc('txpool_status').catch(() => null),
+        rpc('eth_maxPriorityFeePerGas').catch(() => null),
+      ]);
+      const n = parseInt(blk.number, 16);
+      const isNew = net.block !== null && n > net.block;
+      net.live = true;
+      net.block = n;
+      net.base = parseInt(blk.baseFeePerGas, 16) / 1e9;
+      net.txs = blk.transactions.length;
+      net.full = parseInt(blk.gasUsed, 16) / Math.max(1, parseInt(blk.gasLimit, 16));
+      if (pool) { net.pending = parseInt(pool.pending, 16); net.queued = parseInt(pool.queued, 16); }
+      if (tip) net.tip = parseInt(tip, 16) / 1e9;
+      if (isNew) { net.lastBlockAt = performance.now(); pool_onBlock(net.txs); }
+      renderStats();
+    } catch (err) {
+      if (!net.live) renderStats(); // stays in simulated mode
+    }
+  }
+  function simTick() { // only drives the page when the RPC can't be reached
+    if (net.live) return;
+    net.pending = Math.max(5000, net.pending + (Math.random() - 0.48) * 60);
+    net.queued = Math.max(5000, net.queued + (Math.random() - 0.5) * 40);
+    net.base = Math.max(0.5, net.base + (Math.random() - 0.5) * 0.03);
+    if (performance.now() - net.lastBlockAt > 12000) {
+      net.lastBlockAt = performance.now();
+      net.txs = 90 + (Math.random() * 110 | 0);
+      pool_onBlock(net.txs);
+    }
+    renderStats();
+  }
+  renderStats();
+  poll();
+  setInterval(() => { if (!document.hidden) poll(); }, 4000);
+  setInterval(simTick, 1000);
+
+  /* ---------- Mempool visual ----------
+     Cream squares: pending transactions. Every block sweeps a batch into the chain.
+     Red squares: Patio packets. New ones replace old ones in the same slot, so they never get mined. */
+  const pc = $('pool');
+  const px = pc.getContext('2d');
+  let PW = 0, PH = 0, wide = true, poolR, chainR, cells = [], dots = [], chain = [], flyers = [];
+  const CELL = 12;
+  const patio = [];
+  function layoutPool() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    const r = pc.getBoundingClientRect();
+    if (!r.width || (Math.round(r.width) === Math.round(PW) && Math.round(r.height) === Math.round(PH))) return;
+    PW = r.width; PH = r.height;
+    pc.width = Math.round(PW * dpr); pc.height = Math.round(PH * dpr);
+    px.setTransform(dpr, 0, 0, dpr, 0, 0);
+    wide = PW >= 720;
+    poolR = wide ? { x: 24, y: 24, w: PW * 0.68 - 36, h: PH - 48 } : { x: 16, y: 16, w: PW - 32, h: PH - 118 };
+    chainR = wide ? { x: PW * 0.72, y: 24, w: PW * 0.28 - 24, h: PH - 48 } : { x: 16, y: PH - 86, w: PW - 32, h: 70 };
+    cells = [];
+    for (let y = poolR.y; y < poolR.y + poolR.h - CELL; y += CELL) for (let x = poolR.x; x < poolR.x + poolR.w - CELL; x += CELL) cells.push({ x, y, used: false });
+    dots = []; patio.length = 0;
+  }
+  const freeCell = () => { const f = cells.filter(c => !c.used); if (!f.length) return null; const c = f[Math.random() * f.length | 0]; c.used = true; return c; };
+  const targetDots = () => Math.min(cells.length * 0.55, Math.max(60, net.pending / 30));
+  function slot(i) { // i=0 is the newest block
+    if (wide) return { x: chainR.x, y: chainR.y + i * 58, w: chainR.w, h: 48 };
+    return { x: chainR.x + i * 108, y: chainR.y, w: 98, h: chainR.h };
+  }
+  function pool_onBlock(txs) {
+    if (!PW || !poolR) return;
+    const pickN = Math.min(dots.length, Math.max(8, Math.round(dots.length * 0.4)));
+    const picked = dots.sort(() => Math.random() - 0.5).slice(0, pickN);
+    dots = dots.filter(d => !picked.includes(d));
+    const s = slot(0), now = performance.now();
+    picked.forEach((d, i) => {
+      d.cell.used = false;
+      flyers.push({ x0: d.cell.x, y0: d.cell.y, x1: s.x + 8 + Math.random() * (s.w - 16), y1: s.y + 8 + Math.random() * (s.h - 16), t0: now + i * 6, dur: 800 });
+    });
+    const bn = net.live ? net.block : estBlock();
+    setTimeout(() => chain.unshift({ n: bn, est: !net.live, txs, t: performance.now() }), 800 + pickN * 6);
+    if (chain.length > 8) chain.length = 8;
+  }
+  let lastPatio = 0;
+  function drawPool(now) {
+    if (!poolR || !PW) return; // not laid out yet (frames can start at 0×0)
+    px.clearRect(0, 0, PW, PH);
+    // arrivals: keep the pool near the live pending count
+    if (dots.length < targetDots() && Math.random() < 0.6) {
+      for (let k = 0; k < 3; k++) { const c = freeCell(); if (c) dots.push({ cell: c, t: now }); }
+    }
+    // Patio stream: a new packet every 600ms replaces the oldest one in place
+    if (now - lastPatio > 600) {
+      lastPatio = now;
+      if (patio.length < 22) { const c = freeCell(); if (c) patio.push({ cell: c, t: now, from: -10 }); }
+      else { const p = patio.shift(); patio.push({ cell: p.cell, t: now, from: -10, replaced: now }); }
+    }
+    // pending transactions
+    for (const d of dots) {
+      const a = Math.min(1, (now - d.t) / 400);
+      const s = 5 + a * 2;
+      px.fillStyle = `rgba(243,234,214,${0.55 * a + 0.1})`;
+      px.fillRect(d.cell.x + (8 - s) / 2, d.cell.y + (8 - s) / 2, s, s);
+    }
+    // patio packets fly in from the left edge (with a short red motion trail), flash where they replace one
+    for (const p of patio) {
+      const k = Math.min(1, (now - p.t) / 700), e = 1 - Math.pow(1 - k, 3);
+      const x = p.from + (p.cell.x - p.from) * e, y = p.cell.y;
+      if (k < 1) { // speed = derivative of the ease; trail length follows it
+        const v = 3 * Math.pow(1 - k, 2) * (p.cell.x - p.from) / 700 * 16;
+        for (let j = 4; j >= 1; j--) { px.fillStyle = `rgba(255,43,43,${0.12 * (5 - j) / 4})`; px.fillRect(x - v * j * 0.6, y, 8, 8); }
+      }
+      px.fillStyle = '#ff2b2b';
+      px.fillRect(x, y, 8, 8);
+      if (p.replaced && now - p.replaced < 500) {
+        const r = (now - p.replaced) / 500;
+        px.strokeStyle = `rgba(255,43,43,${1 - r})`;
+        px.strokeRect(p.cell.x - 3 - r * 6, y - 3 - r * 6, 14 + r * 12, 14 + r * 12);
+      }
+    }
+    // swept transactions flying into the new block: motion blur trail + a faint warm split, only while moving
+    flyers = flyers.filter(f => now < f.t0 + f.dur);
+    const ease = k => k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+    for (const f of flyers) {
+      const k = Math.max(0, Math.min(1, (now - f.t0) / f.dur));
+      const e = ease(k), x = f.x0 + (f.x1 - f.x0) * e, y = f.y0 + (f.y1 - f.y0) * e;
+      const e2 = ease(Math.max(0, k - 0.06)), xb = f.x0 + (f.x1 - f.x0) * e2, yb = f.y0 + (f.y1 - f.y0) * e2;
+      const speed = Math.hypot(x - xb, y - yb);
+      if (speed > 1) {
+        for (let j = 1; j <= 5; j++) {
+          const t = j / 5;
+          px.fillStyle = `rgba(243,234,214,${0.16 * (1 - t)})`;
+          px.fillRect(x + (xb - x) * t, y + (yb - y) * t, 6, 6);
+        }
+        px.fillStyle = 'rgba(255,60,50,.35)';
+        px.fillRect(x + (xb - x) * 0.25 - 1, y + (yb - y) * 0.25, 6, 6);
+      }
+      px.fillStyle = 'rgba(243,234,214,.85)';
+      px.fillRect(x, y, 6, 6);
+    }
+    // chain
+    px.font = '12px "Geist Pixel", monospace';
+    px.textBaseline = 'middle';
+    const maxSlots = wide ? Math.floor(chainR.h / 58) : Math.floor(chainR.w / 108);
+    chain.slice(0, maxSlots).forEach((b, i) => {
+      const s = slot(i);
+      const k = Math.min(1, (now - b.t) / 500), e = 1 - Math.pow(1 - k, 3);
+      const off = (1 - e) * (wide ? -58 : -108) * (i === 0 ? 0 : 1);
+      const x = wide ? s.x : s.x + off, y = wide ? s.y + off : s.y;
+      const fresh = i === 0 && k < 1;
+      px.globalAlpha = i === 0 ? e : 1 - i * 0.08;
+      // glass block, same recipe as the buttons: soft fill, 1px top highlight, no border
+      px.fillStyle = fresh ? 'rgba(255,43,43,.22)' : 'rgba(243,234,214,.07)';
+      px.beginPath(); px.roundRect ? px.roundRect(x, y, s.w, s.h, 10) : px.rect(x, y, s.w, s.h); px.fill();
+      px.fillStyle = 'rgba(255,255,255,.06)';
+      px.fillRect(x + 10, y, s.w - 20, 1);
+      px.fillStyle = '#f3ead6';
+      px.fillText((b.est ? '~#' : '#') + fmt(b.n), x + 10, y + (wide ? s.h / 2 : 18));
+      px.fillStyle = '#a89d93';
+      const label = `${b.est ? '~' : ''}${b.txs} txs`;
+      if (wide) { px.textAlign = 'right'; px.fillText(label, x + s.w - 10, y + s.h / 2); px.textAlign = 'left'; }
+      else px.fillText(label, x + 10, y + s.h - 18);
+      px.globalAlpha = 1;
+    });
+    if (!chain.length) {
+      px.fillStyle = '#7a706a';
+      px.fillText('waiting for the next block…', chainR.x + 4, chainR.y + 20);
+    }
+    const left = Math.max(0, 12 - (performance.now() - net.lastBlockAt) / 1000);
+    const cd = tabNums(`~${Math.ceil(left)}s`); if ($('countdown').innerHTML !== cd) $('countdown').innerHTML = cd;
+  }
+  layoutPool();
+  new ResizeObserver(() => layoutPool()).observe(pc);
+  watch(pc, 'pool');
+
+  /* one loop for the canvases */
+  /* Scroll feel ------------------------------------------------------------
+     Velocity (own scroll, or wheel/touch when an outer page does the scrolling) drives:
+     - the top/bottom edge fog (idle → gone, fast → strong; off at the very bottom of the page)
+     - a chromatic fringe on text near either edge
+     - a vertical motion smear, only on the mempool section */
+  let lastY = scrollY, vel = 0, wheelVel = 0, lastTouch = null, speed = 0;
+  addEventListener('wheel', e => { wheelVel = Math.max(-6000, Math.min(6000, wheelVel + e.deltaY * (e.deltaMode ? 40 : 1) * 14)); }, { passive: true });
+  addEventListener('touchstart', e => { lastTouch = e.touches[0].clientY; }, { passive: true });
+  addEventListener('touchmove', e => { const y = e.touches[0].clientY; if (lastTouch !== null) wheelVel = Math.max(-6000, Math.min(6000, wheelVel + (lastTouch - y) * 30)); lastTouch = y; }, { passive: true });
+  const fogT = $('fog-t'), fogB = $('fog-b');
+  const fringeEls = [...new Set([...document.querySelectorAll('.reveal:not(.pool-card), .step, .why article, .timeline li')])];
+  fringeEls.forEach(el => el.classList.add('cfx'));
+  let fogShown = -1;
+  function scrollFeel(dt) {
+    const y = scrollY, own = (y - lastY) / Math.max(dt, 0.001); lastY = y;
+    wheelVel *= Math.exp(-dt * 7);
+    const raw = Math.abs(own) > 1 ? own : wheelVel;
+    if (Math.abs(raw) > 40) scrollDir = raw > 0 ? 1 : -1;
+    vel += (raw - vel) * Math.min(1, dt * 10);
+    // fast attack, slower release, so the fog lingers a beat after you stop
+    const target = Math.min(1, Math.pow(Math.abs(vel) / 2400, 0.55)); // gentle scroll already shows a little
+    speed += (target - speed) * Math.min(1, dt * (target > speed ? 14 : 4));
+    const sp = speed < 0.01 ? 0 : speed;
+    const doc = document.scrollingElement || root;
+    const atBottom = y + innerHeight >= doc.scrollHeight - 4, atTop = y <= 2;
+    const fb = atBottom ? 0 : sp, ft = atTop ? 0 : sp;
+    const key = fb.toFixed(2) + ft.toFixed(2);
+    if (key !== fogShown) { fogB.style.setProperty('--f', fb.toFixed(3)); fogT.style.setProperty('--f', ft.toFixed(3)); fogShown = key; }
+
+    const vh = innerHeight, band = Math.min(vh * 0.24, 210);
+    for (const el of fringeEls) {
+      const r = el.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > vh || sp === 0) { if (el._c) { el.style.setProperty('--c', 0); el._c = 0; } continue; }
+      const probe = r.top + Math.min(r.height, 60) / 2;
+      const edge = Math.max(0, Math.min(1, Math.max((probe - (vh - band)) / band, (band - probe) / band)));
+      const c = +(edge * sp * 6).toFixed(2);
+      if (c !== el._c) { el.style.setProperty('--c', c); el._c = c; }
+    }
+  }
+
+  let last = performance.now(), T = 0;
+  function frame(now) {
+    // rAF timestamps can predate the script's start: clamp so dt is never negative
+    const dt = Math.max(0, Math.min(0.033, (now - last) / 1000)); last = now;
+    // each piece is isolated: one failure must never stop the whole loop
+    let ca = 0;
+    try { if (!reduce) scrollFeel(dt); } catch (e) {}
+    for (const ft of forceTexts) { try { ft.draw(now, dt); } catch (e) {} }
+    if (running('cable')) try {
+      T += dt;
+      if (reveal < 1) reveal = Math.min(1, reveal + dt / 1.4);
+      stepSpring(dt);
+      for (const k of packets) { k.p += k.s * dt; if (k.p > 1) k.p -= 1; }
+      drawCable(T);
+    } catch (e) {}
+    if (running('pool')) try { drawPool(now); } catch (e) {}
+    requestAnimationFrame(frame);
+  }
+  resize();
+  new ResizeObserver(() => { resize(); measureLanes(); drawCable(T); }).observe(cv);
+  drawCable(0);
+  if (!reduce) requestAnimationFrame(frame); else drawPool(performance.now());
+
+  /* ---------- Force text: pixels get pushed by the cursor, then settle back ----------
+     WebGL draws a copy of the heading only while it's being pushed; the rest of the time the real
+     DOM text shows. The copy is drawn glyph by glyph at the DOM's own positions (measured with
+     Range rects and a baseline probe), so handing over between the two never shifts anything. */
+  function forceText(el) {
+    if (reduce || !finePointer || !el) return null;
+    const cvs = document.createElement('canvas');
+    cvs.className = 'title-gl'; cvs.setAttribute('aria-hidden', 'true');
+    const gl = cvs.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false });
+    if (!gl) return null;
+    const VS = 'attribute vec2 p;varying vec2 uv;void main(){uv=p*.5+.5;uv.y=1.-uv.y;gl_Position=vec4(p,0.,1.);}';
+    const FS = `precision mediump float;
+      uniform sampler2D t;uniform vec2 res;uniform vec2 m;uniform float F0;uniform float dpr;
+      varying vec2 uv;
+      float h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+      void main(){
+        vec2 px=uv*res;
+        float cs=5.*dpr;                       // one "pixel" of the effect
+        vec2 cell=floor(px/cs);
+        vec2 d=(cell+.5)*cs-m;float dist=length(d);
+        float F=F0*smoothstep(190.*dpr,0.,dist);
+        // every cell has its own fixed direction: pushed out along it, and back along it
+        float r1=h2(cell),r2=h2(cell*1.31+7.),r3=h2(cell*.77+17.);
+        float act=step(.4,r3);
+        vec2 dir=normalize(d+vec2(.001))*.8+vec2(r1-.5,r2-.5)*1.2;
+        vec2 disp=floor(dir*F*act*7.+.5)*cs;    // moves in whole cells
+        vec2 p=px-disp;
+        vec4 c=texture2D(t,p/res);
+        vec4 cr=texture2D(t,(p+vec2(1.5*dpr*F,0.))/res);
+        float a=max(c.a,cr.a*.7);
+        vec3 col=c.rgb+vec3(.85,.1,.08)*max(0.,cr.a-c.a)*.7;   // faint warm fringe
+        float moved=step(.5,length(disp));
+        col=mix(col,col*vec3(1.,.62,.56)+vec3(.1,0.,0.)*c.a,moved*.55);
+        gl_FragColor=vec4(col,a);
+      }`;
+    const sh = (type, src) => { const o = gl.createShader(type); gl.shaderSource(o, src); gl.compileShader(o); return o; };
+    const prog = gl.createProgram();
+    gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS));
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return null;
+    gl.useProgram(prog);
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, 'p');
+    gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    const U = {}; for (const n of ['res', 'm', 'F0', 'dpr']) U[n] = gl.getUniformLocation(prog, n);
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+    for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+    gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+
+    const PAD = 60;
+    const off = document.createElement('canvas'), oc = off.getContext('2d');
+    let dpr = 1, painted = false;
+    const mouse = { x: 0, y: 0, tx: 0, ty: 0 };
+    let inside = false, force = 0, forceT = 0, lastMove = null;
+
+    function paint() {
+      if (el.style.maskImage && el.style.maskImage !== 'none') return false; // mid-reveal: wait
+      const r = el.getBoundingClientRect();
+      if (!r.width) return false;
+      dpr = Math.min(devicePixelRatio || 1, 2);
+      const CW = r.width + PAD * 2, CH = r.height + PAD * 2;
+      Object.assign(cvs.style, { left: -PAD + 'px', top: -PAD + 'px', width: CW + 'px', height: CH + 'px' });
+      cvs.width = off.width = Math.round(CW * dpr); cvs.height = off.height = Math.round(CH * dpr);
+      oc.setTransform(dpr, 0, 0, dpr, 0, 0);
+      oc.clearRect(0, 0, CW, CH);
+      const cs = getComputedStyle(el);
+      oc.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      oc.textBaseline = 'alphabetic';
+      const range = document.createRange();
+      const mt = oc.measureText('Hg');
+      const A = mt.fontBoundingBoxAscent, D = mt.fontBoundingBoxDescent;
+      el.querySelectorAll('.w').forEach(w => {
+        oc.fillStyle = w.classList.contains('accent') ? '#ff2b2b' : '#f3ead6';
+        const node = w.firstChild;
+        for (let i = 0; i < node.length; i++) {
+          range.setStart(node, i); range.setEnd(node, i + 1);
+          const cr = range.getBoundingClientRect();
+          // a text range's box is the font's content area (ascent + descent): its baseline sits at A/(A+D) of it
+          const base = cr.top - r.top + PAD + cr.height * (A / (A + D));
+          oc.fillText(node.data[i], cr.left - r.left + PAD, base);
+        }
+      });
+      // the pixel scribble moves with the letters
+      el.querySelectorAll('.scribble canvas').forEach(sc => {
+        const sr = sc.getBoundingClientRect();
+        oc.imageSmoothingEnabled = false;
+        if (sc.width) oc.drawImage(sc, sr.left - r.left + PAD, sr.top - r.top + PAD, sr.width, sr.height);
+      });
+      gl.viewport(0, 0, cvs.width, cvs.height);
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, off);
+      if (!cvs.isConnected) el.appendChild(cvs);
+      painted = true;
+      return true;
+    }
+    el.addEventListener('pointerenter', () => { inside = true; lastMove = null; });
+    el.addEventListener('pointerleave', () => { inside = false; });
+    el.addEventListener('pointermove', e => {
+      const r = el.getBoundingClientRect();
+      mouse.tx = (e.clientX - r.left + PAD) * dpr; mouse.ty = (e.clientY - r.top + PAD) * dpr;
+      const now = performance.now();
+      if (lastMove) {
+        const sp = Math.hypot(e.clientX - lastMove.x, e.clientY - lastMove.y) / Math.max(1, now - lastMove.t);
+        forceT = Math.min(1, forceT + sp * 0.3);
+      } else { mouse.x = mouse.tx; mouse.y = mouse.ty; }
+      lastMove = { x: e.clientX, y: e.clientY, t: now };
+    });
+    const repaint = () => { if (painted) painted = false; };
+    new ResizeObserver(repaint).observe(el);
+    addEventListener('resize', repaint);
+    document.fonts && document.fonts.ready.then(repaint);
+
+    function draw(now, dt) {
+      forceT *= Math.exp(-dt * 4.5);
+      if (!inside) forceT *= Math.exp(-dt * 6);
+      force += (forceT - force) * Math.min(1, dt * 14);
+      mouse.x += (mouse.tx - mouse.x) * Math.min(1, dt * 18);
+      mouse.y += (mouse.ty - mouse.y) * Math.min(1, dt * 18);
+      const active = force > 0.012;
+      if (active && !el.classList.contains('gl')) {
+        // (re)build the copy right before taking over, so it always matches the current layout
+        if (!painted && !paint()) { force = forceT = 0; return; }
+        el.classList.add('gl');
+      } else if (!active && el.classList.contains('gl')) {
+        el.classList.remove('gl');
+        gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+      }
+      if (!active) return;
+      gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.uniform2f(U.res, cvs.width, cvs.height);
+      gl.uniform2f(U.m, mouse.x, mouse.y);
+      gl.uniform1f(U.F0, Math.min(1, force));
+      gl.uniform1f(U.dpr, dpr);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    }
+    return { draw, reset: () => { force = forceT = 0; painted = false; el.classList.remove('gl'); } };
+  }
+  /* ---------- Marker scribble under "radio.": a two-pass wobbly stroke in chunky pixels ---------- */
+  const scrib = (() => {
+    const wrap = document.querySelector('.scribble');
+    if (!wrap) return null;
+    const c = wrap.querySelector('canvas'), g = c.getContext('2d');
+    let pts = [], cols = 0, rows = 0, prog = reduce ? 1 : 0;
+    function build() {
+      const rnd = (i => () => (i = (i * 16807) % 2147483647) / 2147483647)(7); // seeded: same scribble every time
+      const r = wrap.getBoundingClientRect();
+      if (!r.width) return;
+      const fs = parseFloat(getComputedStyle(document.getElementById('hero-title')).fontSize);
+      const px = Math.max(2, Math.round(fs * 0.032));
+      cols = Math.max(8, Math.floor(r.width / px)); rows = Math.max(4, Math.floor(r.height / px));
+      c.width = cols; c.height = rows;
+      pts = [];
+      const plot = (x, y) => pts.push([Math.round(x), Math.round(y)]);
+      // out: left → right, a little high, wobbling
+      for (let x = 1; x < cols - 2; x += 0.5) plot(x, rows * 0.36 + Math.sin(x / cols * Math.PI * 1.6 + 0.4) * rows * 0.05 + (rnd() - 0.5) * 0.5);
+      // the flick down at the end
+      for (let k = 0; k < 1; k += 0.05) plot(cols - 2 - k * 3, rows * 0.36 + k * rows * 0.26);
+      // back: right → left, lower, a looser wave that stops short (like a hand does)
+      for (let x = cols - 5; x > cols * 0.06; x -= 0.5) plot(x, rows * 0.62 + Math.sin(x / cols * Math.PI * 1.3 + 2) * rows * 0.05 + (rnd() - 0.5) * 0.5);
+      draw();
+    }
+    function draw() {
+      g.clearRect(0, 0, cols, rows);
+      const n = Math.floor(pts.length * prog);
+      for (let i = 0; i < n; i++) {
+        const [x, y] = pts[i];
+        g.fillStyle = i % 7 === 0 ? '#ff5148' : '#ff2b2b'; // marker texture
+        g.fillRect(x, y, 1, i % 4 === 0 ? 2 : 1); // uneven, like ink
+      }
+    }
+    function drawIn(delay) {
+      if (reduce) return;
+      setTimeout(() => {
+        const t0 = performance.now();
+        (function tick(now) {
+          prog = Math.min(1, (now - t0) / 650);
+          draw();
+          if (prog < 1) requestAnimationFrame(tick);
+        })(t0);
+      }, delay);
+    }
+    new ResizeObserver(build).observe(wrap);
+    document.fonts && document.fonts.ready.then(build);
+    build();
+    return { drawIn };
+  })();
+  scrib && scrib.drawIn(2000); // right after the headline finishes arriving
+
+  /* ---------- Nav glyphs: pixel wireframes with a micro-interaction on hover ---------- */
+  (() => {
+    const CREAM = '#a89d93', HOT = '#ff2b2b', HOT2 = '#f3ead6';
+    const plot = (g, x, y) => g.fillRect(Math.round(x), Math.round(y), 1, 1);
+    const ell = (g, cx, cy, rx, ry, a0 = 0, a1 = Math.PI * 2) => { const n = Math.max(24, (rx + ry) * 4); for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n; plot(g, cx + Math.cos(a) * rx, cy + Math.sin(a) * ry); } };
+    const DRAW = {
+      // the globe: meridians slide round as it spins
+      globe(g, t, k) {
+        const cx = 11.5, cy = 7.5, rx = 10.5, ry = 6.5;
+        g.fillStyle = k > 0 ? HOT : CREAM;
+        ell(g, cx, cy, rx, ry);
+        for (let x = cx - rx; x <= cx + rx; x++) plot(g, x, cy);
+        for (const f of [-0.52, 0.52]) { const yy = cy + ry * f, hw = rx * Math.sqrt(1 - f * f); for (let x = cx - hw; x <= cx + hw; x++) plot(g, x, yy); }
+        g.fillStyle = k > 0 ? HOT2 : CREAM;
+        const ph = t * 1.6;
+        for (let m = 0; m < 3; m++) { const w = rx * Math.abs(Math.cos(ph + m * Math.PI / 3)); if (w > 0.6) ell(g, cx, cy, w, ry); else for (let y = cy - ry; y <= cy + ry; y++) plot(g, cx, y); }
+      },
+      // broadcast: arcs ripple outward from the mast
+      signal(g, t, k) {
+        g.fillStyle = k > 0 ? HOT : CREAM;
+        g.fillRect(5, 7, 2, 2); for (let y = 9; y < 15; y++) plot(g, 5.5, y);
+        for (let i = 0; i < 3; i++) {
+          const r = 4 + i * 3.5, live = k > 0 ? 0.35 + 0.65 * Math.max(0, Math.sin(t * 6 - i * 1.1)) : 1;
+          g.globalAlpha = live; g.fillStyle = k > 0 && i === Math.floor((t * 3) % 3) ? HOT2 : (k > 0 ? HOT : CREAM);
+          ell(g, 6, 8, r, r, -0.9, 0.9);
+        }
+        g.globalAlpha = 1;
+      },
+      // live audio: a waveform that wakes up
+      wave(g, t, k) {
+        g.fillStyle = k > 0 ? HOT : CREAM;
+        const amp = 1.5 + 4.5 * k;
+        for (let x = 0; x < 24; x += 0.5) plot(g, x, 7.5 + Math.sin(x * 0.55 + t * 7) * amp * Math.sin(Math.PI * x / 24) + Math.sin(x * 1.7 - t * 11) * k);
+      },
+      // mempool: a grid of pending txs; hover sweeps a column into a "block"
+      pool(g, t, k) {
+        for (let c = 0; c < 6; c++) for (let r = 0; r < 3; r++) {
+          const lit = k > 0 && Math.floor(t * 4) % 6 === c;
+          g.fillStyle = lit ? HOT2 : (k > 0 && (c + r + Math.floor(t * 8)) % 5 === 0 ? HOT : CREAM);
+          g.fillRect(2 + c * 3.5 | 0, 3 + r * 4 + (lit ? -1 : 0), 2, 2);
+        }
+        g.fillStyle = k > 0 ? HOT : CREAM;
+        for (let x = 1; x < 23; x++) plot(g, x, 15);
+      },
+    };
+    document.querySelectorAll('.glyph').forEach(el => {
+      const c = el.querySelector('canvas'), g = c.getContext('2d'), fn = DRAW[el.dataset.g];
+      let hover = false, k = 0, t = 0, raf = 0, last = 0;
+      const render = () => { g.clearRect(0, 0, 24, 16); fn(g, t, k); };
+      function loop(now) {
+        const dt = Math.min(0.05, (now - last) / 1000 || 0); last = now;
+        k += ((hover ? 1 : 0) - k) * Math.min(1, dt * 10);
+        t += dt * (0.4 + k);
+        render();
+        if (hover || k > 0.01) raf = requestAnimationFrame(loop); else { k = 0; render(); raf = 0; }
+      }
+      el.addEventListener('pointerenter', () => { hover = true; if (!raf && !reduce) { last = performance.now(); raf = requestAnimationFrame(loop); } });
+      el.addEventListener('pointerleave', () => { hover = false; });
+      render();
+    });
+  })();
+
+  const forceTexts = [forceText($('hero-title')), forceText($('final-title'))].filter(Boolean);
+
+  /* ---------- Ticker: real pending txs from Hoodi when live, labelled examples otherwise ---------- */
+  const track = $('ticker-track'), tlabel = $('ticker-label');
+  const short = h => h.slice(0, 6) + '…' + h.slice(-4);
+  function fillTicker(items) {
+    const set = document.createElement('div');
+    set.className = 'ticker-set';
+    set.innerHTML = items.map(t => `<span class="tx"><span class="sq c"></span><span class="h">${short(t.hash)}</span><span class="num">nonce ${fmt(t.nonce)}</span><span class="num">${fmt(t.bytes)} B</span><span class="p">pending</span></span>`).join('');
+    track.replaceChildren(set, set.cloneNode(true));
+    tlabel.innerHTML = '<svg class="pxdot" viewBox="0 0 5 5" aria-hidden="true"><path d="M1 0h3v1h1v3h-1v1h-3v-1h-1v-3h1z" fill="currentColor"/></svg>Pending on Hoodi';
+  }
+  let lastPendingFetch = 0;
+  async function refreshTicker() {
+    if (!net.live || performance.now() - lastPendingFetch < 11000) return;
+    lastPendingFetch = performance.now();
+    try {
+      const pb = await rpc('eth_getBlockByNumber', ['pending', true]);
+      const txs = (pb.transactions || []).slice(0, 24).map(t => ({ hash: t.hash, nonce: parseInt(t.nonce, 16), bytes: Math.max(0, (t.input.length - 2) / 2) }));
+      if (txs.length >= 4) fillTicker(txs);
+    } catch (e) { /* keep what's there */ }
+  }
+  setInterval(refreshTicker, 3000);
+  const ticker = $('ticker');
+  watch(ticker, 'ticker', on => ticker.classList.toggle('paused', !on));
+
+  /* ---------- Dial: scrolling through the section switches Go on air → Tune in ---------- */
+  const dial = $('dial'), dialSeg = $('dial-seg'), dialSub = $('dial-sub'), dialOpen = $('dial-open'), dialBar = $('dial-bar');
+  const DIAL = {
+    cast: { i: 0, sub: "Wallet + mic. Approve once and you're live.", href: 'https://patiostation.vercel.app/cast' },
+    listen: { i: 1, sub: 'Just a link. No wallet, no account. Press play.', href: 'https://patiostation.vercel.app/' },
+  };
+  let dialTab = 'cast';
+  function swapIn(el) { // same ordered dither as the reveals, quicker
+    if (reduce) return;
+    const m = masks(7), size = '56px 56px', t0 = performance.now();
+    (function tick(now) {
+      const k = Math.min(1, (now - t0) / 520), e = 1 - Math.pow(1 - k, 3);
+      setMask(el, m[Math.round(e * 64)], size);
+      if (k < 1) requestAnimationFrame(tick); else setMask(el, 'none', 'auto');
+    })(t0);
+  }
+  function setDial(tab) {
+    if (tab === dialTab) return;
+    dialTab = tab;
+    const d = DIAL[tab];
+    dialSeg.dataset.i = d.i;
+    [...dialSeg.children].forEach((b, j) => { b.classList.toggle('on', j === d.i); b.setAttribute('aria-selected', j === d.i); });
+    dialSub.textContent = d.sub;
+    dialOpen.href = d.href;
+    dial.querySelectorAll('.dial-pane').forEach(p => { const show = p.dataset.pane === tab; p.hidden = !show; if (show) swapIn(p); });
+  }
+  function dialProgress() {
+    const r = dial.getBoundingClientRect();
+    const span = r.height - innerHeight;
+    return span > 0 ? Math.max(0, Math.min(1, -r.top / span)) : 0;
+  }
+  function updateDial() {
+    const p = dialProgress();
+    dialBar.style.transform = `scaleX(${p.toFixed(3)})`;
+    setDial(p < 0.5 ? 'cast' : 'listen');
+  }
+  addEventListener('scroll', () => requestAnimationFrame(updateDial), { passive: true });
+  dialSeg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    setDial(b.dataset.tab);
+    // move the page to the matching half of the section so scroll and toggle agree
+    const r = dial.getBoundingClientRect(), span = r.height - innerHeight;
+    if (span > 0) scrollTo({ top: scrollY + r.top + span * (b.dataset.tab === 'cast' ? 0.2 : 0.75), behavior: reduce ? 'auto' : 'smooth' });
+  }));
+
+  /* ---------- News: censorship cases, pixel images ----------
+     To use your own image, set `img` to a URL or data: URI. It gets the same pixel + dither treatment.
+     Without `img`, a pixel flag is drawn. Click an image (or wait) to flip between flag and symbol. */
+  const STORIES = [
+    { tag: 'Russia · 2022', flag: 'ru', icon: 'radio', title: 'Echo of Moscow, a radio station on air since 1990, is taken off the air and dissolved.', fix: 'A radio with no transmitter to seize. The signal lives in a public mempool.' },
+    { tag: 'Hong Kong · 2021', flag: 'hk', icon: 'paper', title: 'Apple Daily prints its last edition after authorities freeze its assets.', fix: 'No servers to raid, no hosting bill. A broadcast only needs a small temporary wallet.' },
+    { tag: 'Iran · 2022', flag: 'ir', icon: 'phone', title: 'Instagram and WhatsApp are blocked during the protests after Mahsa Amini’s death.', fix: 'There’s no single app to block. Any Ethereum node or RPC can carry the broadcast.' },
+    { tag: 'Myanmar · 2021', flag: 'mm', icon: 'nosignal', title: 'After the coup, the military blocks Facebook and orders nightly internet shutdowns.', fix: 'Between cuts, signed broadcasts spread through any node that’s still reachable.' },
+    { tag: 'Turkey · 2017–2019', flag: 'tr', icon: 'book', title: 'Wikipedia is blocked nationwide for almost three years.', fix: 'Blocking one site is easy. Blocking Ethereum’s transaction network means blocking the chain.' },
+    { tag: 'Use case', use: true, icon: 'sign', title: 'Field reports you can verify. Every packet carries the broadcaster’s signature.', fix: 'Listeners know it’s really you, even when the link gets reposted.' },
+    { tag: 'Use case', use: true, icon: 'radio', title: 'Community radio without a server, a domain or a monthly bill.', fix: 'Share an unlisted link in the group chat. That’s the whole setup.' },
+  ];
+  const FLAGS = {
+    ru: (g, n) => { stripes(g, n, ['#f3ead6', '#2a4bb8', '#d8261f']); },
+    ir: (g, n) => { stripes(g, n, ['#239f40', '#f3ead6', '#da0000']); g.fillStyle = '#da0000'; g.fillRect(n * .42, n * .4, n * .16, n * .2); },
+    mm: (g, n) => { stripes(g, n, ['#fecb00', '#34b233', '#ea2839']); star(g, n / 2, n * .55, n * .3, '#f3ead6'); },
+    tr: (g, n) => { g.fillStyle = '#e30a17'; g.fillRect(0, 0, n, n); disc(g, n * .42, n / 2, n * .24, '#f3ead6'); disc(g, n * .48, n / 2, n * .2, '#e30a17'); star(g, n * .68, n / 2, n * .12, '#f3ead6'); },
+    hk: (g, n) => { g.fillStyle = '#de2910'; g.fillRect(0, 0, n, n); for (let k = 0; k < 5; k++) { const a = k * 1.2566 - 1.57; disc(g, n / 2 + Math.cos(a) * n * .16, n / 2 + Math.sin(a) * n * .16, n * .12, '#f3ead6'); } disc(g, n / 2, n / 2, n * .05, '#de2910'); },
+  };
+  function stripes(g, n, cols) { cols.forEach((c, i) => { g.fillStyle = c; g.fillRect(0, i * n / cols.length, n, n / cols.length + 1); }); }
+  function disc(g, x, y, r, c) { g.fillStyle = c; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); }
+  function star(g, x, y, r, c) { g.fillStyle = c; g.beginPath(); for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5 - Math.PI / 2, rr = i % 2 ? r * .45 : r; g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } g.fill(); }
+  const ICONS = { // 12×12 pixel art
+    radio: ['....#.......', '.....#......', '......#.....', '.##########.', '.#........#.', '.#.###..#.#.', '.#.#.#....#.', '.#.###..#.#.', '.#........#.', '.##########.', '..#......#..', '............'],
+    paper: ['............', '.#########..', '.#.......##.', '.#.#####.##.', '.#.......##.', '.#.###.#.##.', '.#.###.#.##.', '.#.......##.', '.#.#####.##.', '.#.......##.', '.##########.', '............'],
+    phone: ['...######...', '...#....#...', '...#.##.#...', '...#.##.#...', '...#....#...', '...#....#...', '...#....#...', '...#....#...', '...#....#...', '...#.##.#...', '...######...', '............'],
+    nosignal: ['#..........#', '.#.........#', '..#......#.#', '...#.....#.#', '....#..#.#.#', '.....#.#.#.#', '....#.##.#.#', '...#.#.#.#.#', '..#.##.#.#.#', '.#.###.#.#.#', '#..........#', '............'],
+    book: ['............', '.####..####.', '.#..#..#..#.', '.#.##..##.#.', '.#..#..#..#.', '.#.##..##.#.', '.#..#..#..#.', '.#.##..##.#.', '.#..#..#..#.', '.####..####.', '.....##.....', '............'],
+    sign: ['............', '.........##.', '........##..', '.......##...', '......##....', '.....##.....', '....##......', '...#........', '............', '.#.#.#.#.#..', '############', '............'],
+  };
+  const N = 32;
+  function frameFlag(st) { const c = document.createElement('canvas'); c.width = c.height = N; const g = c.getContext('2d'); (FLAGS[st.flag] || ((g) => { g.fillStyle = '#4a2322'; g.fillRect(0, 0, N, N); }))(g, N); return c; }
+  function frameIcon(st) {
+    const c = document.createElement('canvas'); c.width = c.height = N; const g = c.getContext('2d');
+    g.fillStyle = st.use ? '#2a2322' : '#4a2322'; g.fillRect(0, 0, N, N);
+    const rows = ICONS[st.icon] || ICONS.radio, px = 2, off = (N - 12 * px) / 2;
+    g.fillStyle = st.use ? '#f3ead6' : '#ff5148';
+    rows.forEach((r, y) => [...r].forEach((ch, x) => { if (ch === '#') g.fillRect(off + x * px, off + y * px, px, px); }));
+    return c;
+  }
+  // Patio treatment: 32×32, ordered dither to a small palette, a touch of red
+  function treat(src) {
+    const c = document.createElement('canvas'); c.width = c.height = N; const g = c.getContext('2d');
+    g.drawImage(src, 0, 0, N, N);
+    const id = g.getImageData(0, 0, N, N), d = id.data;
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const i = (y * N + x) * 4, th = (B8[y & 7][x & 7] / 64 - 0.5) * 70;
+      for (let k = 0; k < 3; k++) d[i + k] = Math.max(0, Math.min(255, Math.round((d[i + k] + th) / 64) * 64));
+      d[i] = Math.min(255, d[i] * 1.06 + 6);
+    }
+    g.putImageData(id, 0, 0);
+    return c;
+  }
+  const newsList = $('news-list');
+  const cards = STORIES.map(st => {
+    const card = document.createElement('article');
+    card.className = 'news-card reveal';
+    card.innerHTML = `<canvas class="news-img" width="${N}" height="${N}" role="img" aria-label="${st.tag}"></canvas><div class="news-body"><span class="news-tag${st.use ? ' use' : ''}">${st.tag}</span><h3></h3><div class="news-fix-wrap"><p class="news-fix"><b>Patio →</b> <span></span></p></div></div>`;
+    card.querySelector('h3').textContent = st.title;
+    card.querySelector('.news-fix span').textContent = st.fix;
+    newsList.appendChild(card);
+    const cvs = card.querySelector('canvas'), g = cvs.getContext('2d');
+    const frames = [];
+    const push = f => frames.push(treat(f));
+    push(frameIcon(st));
+    if (st.flag) push(frameFlag(st));
+    if (st.img) { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => { frames[1] = treat(im); }; im.src = st.img; }
+    let cur = 0;
+    function show(i, animate) {
+      const next = frames[i % frames.length], prev = frames[cur % frames.length];
+      cur = i;
+      if (!animate || reduce) { g.drawImage(next, 0, 0); return; }
+      // dissolve between frames in Bayer order
+      const nd = next.getContext('2d').getImageData(0, 0, N, N).data, pd = prev.getContext('2d').getImageData(0, 0, N, N).data;
+      const out = g.createImageData(N, N), t0 = performance.now();
+      (function tick(now) {
+        const k = Math.min(1, (now - t0) / 560);
+        for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+          const j = (y * N + x) * 4, src = B8[y & 7][x & 7] / 64 < k ? nd : pd;
+          out.data[j] = src[j]; out.data[j + 1] = src[j + 1]; out.data[j + 2] = src[j + 2]; out.data[j + 3] = 255;
+        }
+        g.putImageData(out, 0, 0);
+        if (k < 1) requestAnimationFrame(tick);
+      })(t0);
+    }
+    show(0);
+    if (frames.length > 1 || st.img) {
+      card.addEventListener('pointerenter', () => { if (cur % 2 === 0) show(1, true); });
+      card.addEventListener('pointerleave', () => { if (cur % 2 === 1) show(0, true); });
+      card.addEventListener('click', () => { card.classList.toggle('open'); show(card.classList.contains('open') ? 1 : 0, true); }); // touch
+    }
+    return { el: card };
+  });
+  // wait for the cards' reveals to be registered, then join the same reveal system
+  cards.forEach(c => { hideEl(c.el); io.observe(c.el); });
+  watch(newsList, 'news');
+  const step = () => newsList.querySelector('.news-card').offsetWidth + 16;
+  $('news-prev').addEventListener('click', () => newsList.scrollBy({ left: -step(), behavior: 'smooth' }));
+  $('news-next').addEventListener('click', () => newsList.scrollBy({ left: step(), behavior: 'smooth' }));
+
+  /* ---------- Signal path fills with scroll ---------- */
+  const path = $('path');
+  const steps = [...path.querySelectorAll('.step')];
+  const fill = path.querySelector('.path-fill');
+  let pathQueued = false;
+  function updatePath() {
+    pathQueued = false;
+    const r = path.getBoundingClientRect(), vh = innerHeight;
+    const p = reduce ? 1 : Math.max(0, Math.min(1, (vh * 0.8 - r.top) / (r.height + vh * 0.25)));
+    const vertical = matchMedia('(max-width:980px)').matches;
+    path.style.setProperty('--p', p.toFixed(4));
+    path.style.setProperty('--len', (vertical ? fill.offsetHeight : fill.offsetWidth) + 'px');
+    steps.forEach((s, i) => s.classList.toggle('lit', p >= i / (steps.length - 1) - 0.02));
+  }
+  addEventListener('scroll', () => { if (!pathQueued) { pathQueued = true; requestAnimationFrame(updatePath); } }, { passive: true });
+  addEventListener('resize', updatePath);
+  updatePath();
+
+  /* ---------- Packet inspector ---------- */
+  const hexLive = $('hex-live');
+  hexLive.textContent = 'a3' + hex(360);
+  watch($('hex'), 'hex');
+  let nonce = 1284;
+  if (!reduce) setInterval(() => {
+    if (!running('hex')) return;
+    const fresh = document.createElement('span');
+    fresh.className = 'fresh';
+    fresh.textContent = hex(8);
+    hexLive.textContent = hexLive.textContent.slice(0, 352);
+    hexLive.prepend(fresh);
+    requestAnimationFrame(() => requestAnimationFrame(() => fresh.classList.add('settled')));
+    $('nonce').textContent = fmt(++nonce);
+  }, 1000);
+
+  /* ---------- Cast mock plays the real flow ---------- */
+  const mockBtn = $('mock-btn'), mockLbl = $('mock-lbl'), mockTxt = $('mock-txt');
+  const prog = [...$('progress').children], segMedia = $('seg-media');
+  const flow = [
+    { s: 'connect', t: 'Connect wallet', done: 0 },
+    { s: 'check', t: 'Check microphone', done: 1 },
+    { s: 'prepare', t: 'Prepare broadcast', done: 2 },
+    { s: 'start', t: 'Start', done: 3 },
+    { s: 'live', t: 'Live 00:01 · Stop', done: 4 },
+  ];
+  let fi = 0, liveSecs = 1, liveTimer = null, media = 0;
+  function applyFlow() {
+    const f = flow[fi];
+    mockLbl.classList.add('swap');
+    setTimeout(() => {
+      mockBtn.dataset.state = f.s;
+      mockTxt.textContent = f.t;
+      prog.forEach((p, i) => p.classList.toggle('done', i < f.done));
+      mockLbl.classList.remove('swap');
+    }, reduce ? 0 : 160);
+    clearInterval(liveTimer);
+    if (f.s === 'live') {
+      liveSecs = 1;
+      liveTimer = setInterval(() => { mockTxt.innerHTML = tabNums(`Live 00:${String(++liveSecs).padStart(2, '0')} · Stop`); }, 1000);
+    }
+  }
+  watch($('cast-mock'), 'cast');
+  setInterval(() => {
+    if (!running('cast')) return;
+    if (flow[fi].s === 'live' && liveSecs < 6) return;
+    fi = (fi + 1) % flow.length;
+    if (fi === 0) { media = 1 - media; segMedia.dataset.i = media; [...segMedia.children].forEach((c, j) => c.classList.toggle('on', j === media)); }
+    applyFlow();
+  }, 1700);
+
+  /* ---------- Tiny video ---------- */
+  const tv = $('tv'), tx = tv.getContext('2d'), img = tx.createImageData(80, 60);
+  function tvFrame(t) {
+    const cx = 40 + Math.sin(t * 0.7) * 3, cy = 26 + Math.sin(t * 1.1) * 1.5;
+    for (let y = 0; y < 60; y++) for (let x = 0; x < 80; x++) {
+      const i = (y * 80 + x) * 4;
+      const dx = (x - cx) / 13, dy = (y - cy) / 16, sx = (x - 40) / 30, sy = (y - 66) / 20;
+      let v = Math.max(1 - (dx * dx + dy * dy), 1 - (sx * sx + sy * sy), 0);
+      v = Math.min(1, v * 1.6) * 0.85 + 0.12 * (x / 80);
+      const on = v + Math.random() * 0.12 > (B8[y & 7][x & 7] / 64) * 0.9 + 0.12;
+      img.data[i] = on ? 243 : 42 + v * 90;
+      img.data[i + 1] = on ? 234 * (0.55 + v * 0.45) : 12;
+      img.data[i + 2] = on ? 214 * (0.5 + v * 0.4) : 14;
+      img.data[i + 3] = 255;
+    }
+    tx.putImageData(img, 0, 0);
+  }
+  let tvT = 0;
+  tvFrame(0);
+  watch(tv, 'tv');
+  if (!reduce) setInterval(() => { if (running('tv')) tvFrame(tvT += 0.2); }, 1000 / 6);
+
+  /* ---------- Audio bars + clock ---------- */
+  const bars = $('bars');
+  for (let i = 0; i < 36; i++) bars.appendChild(document.createElement('i'));
+  const bs = [...bars.children];
+  let bt = 0;
+  function barsFrame() {
+    bt += 0.12;
+    bs.forEach((b, i) => {
+      const v = 0.18 + 0.5 * Math.abs(Math.sin(i * 0.45 + bt)) * (0.5 + 0.5 * Math.sin(bt * 0.6 + i * 0.12)) + Math.random() * 0.3;
+      b.style.transform = `scaleY(${Math.min(1, v).toFixed(3)})`;
+    });
+  }
+  barsFrame();
+  watch(bars, 'bars');
+  let secs = 222;
+  if (!reduce) {
+    setInterval(() => { if (running('bars')) barsFrame(); }, 110);
+    setInterval(() => { secs++; $('elapsed').innerHTML = tabNums(String(secs / 60 | 0).padStart(2, '0') + ':' + String(secs % 60).padStart(2, '0')); }, 1000);
+  }
+})();
+</script>
