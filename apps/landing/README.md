@@ -1,4 +1,4 @@
-# Patio Station — landing
+# Patio Tokyo — landing
 
 A single-page landing for Patio: *Ethereum is the radio.*
 
