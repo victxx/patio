@@ -54,6 +54,8 @@ The signal panel also shows a short packet preview while the simulated listener 
 
 The panel keeps a three-packet rolling history to make the receiving state easier to inspect.
 
+The first network profile is now recorded as Hoodi testnet, keeping the experimental station separate from production networks.
+
 The protocol workspace now includes its first binary codec: packets can be encoded with a fixed header and checksum, decoded, and serialized for an API response.
 
 The codec has focused round-trip and corruption tests covering the first packet shape.
