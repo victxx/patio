@@ -52,6 +52,8 @@ The radio test now gives the player a receiving state while playback is active.
 
 The signal panel also shows a short packet preview while the simulated listener is receiving.
 
+The panel keeps a three-packet rolling history to make the receiving state easier to inspect.
+
 The protocol workspace now includes its first binary codec: packets can be encoded with a fixed header and checksum, decoded, and serialized for an API response.
 
 The codec has focused round-trip and corruption tests covering the first packet shape.
