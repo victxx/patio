@@ -36,6 +36,17 @@ The repository contains early HTML/JavaScript interfaces, media conversion scrip
 
 Development will happen on `tokyo26`. This first commit records the motivation and starting direction; implementation will follow step by step.
 
+## Protocol workspace
+
+`packages/protocol` currently contains the `PatioPacketV1` types, message and codec identifiers, and packet envelope constants. Encoding, decoding, and network transport are not implemented in this workspace yet.
+
+Use pnpm 11.19.0 to install dependencies and check the TypeScript definitions:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm typecheck
+```
+
 ---
 
 <details>
