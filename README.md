@@ -40,7 +40,7 @@ Development will happen on `tokyo26`. This first commit records the motivation a
 
 The original prototype, design assets, screenshots, and building notes are grouped under [`legacy/`](legacy/). New development lives in `packages/`.
 
-The first UI experiment lives in [`apps/radio-test/`](apps/radio-test/). Open `index.html` directly in a browser to try the placeholder station screen.
+The first UI experiment lives in [`apps/radio-test/`](apps/radio-test/). It is a small React/Vite station screen with simulated playback and signal states.
 
 `packages/protocol` currently contains the `PatioPacketV1` types, message and codec identifiers, packet envelope constants, and byte/Base64 conversion helpers. Packet encoding, decoding, and network transport are not implemented in this workspace yet.
 
