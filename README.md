@@ -42,6 +42,8 @@ The original prototype, design assets, screenshots, and building notes are group
 
 The first UI experiment lives in [`apps/radio-test/`](apps/radio-test/). It is a small React/Vite station screen with simulated playback and signal states.
 
+The protocol now also has a small reconstruction step that orders received packets and reports duplicates or missing sequence numbers.
+
 The app includes a Vercel configuration in `apps/radio-test/vercel.json`; it can be deployed from that directory once the Vercel project is linked.
 
 `packages/protocol` currently contains the `PatioPacketV1` types, message and codec identifiers, packet envelope constants, and byte/Base64 conversion helpers. Packet encoding, decoding, and network transport are not implemented in this workspace yet.
