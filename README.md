@@ -46,6 +46,8 @@ The protocol now also has a small reconstruction step that orders received packe
 
 Each test station session now gets a short stream identifier, ready to be attached to future packets.
 
+The protocol also exposes a small serialized packet shape for API responses, including a Base64 payload and string-safe timestamp.
+
 The app includes a Vercel configuration in `apps/radio-test/vercel.json`; it can be deployed from that directory once the Vercel project is linked.
 
 `packages/protocol` currently contains the `PatioPacketV1` types, message and codec identifiers, packet envelope constants, and byte/Base64 conversion helpers. Packet encoding, decoding, and network transport are not implemented in this workspace yet.
