@@ -13,4 +13,5 @@ nav, footer { display: flex; align-items: center; justify-content: space-between
 .levels.active b:nth-child(3n) { animation-delay: .3s; }
 @keyframes bounce { from { transform: scaleY(.35); } to { transform: scaleY(1.2); } }
 .packet-preview { display: block; margin-top: 18px; color: #f1bd4a; font: 11px 'DM Mono', monospace; }
+.cast-estimate { grid-column: 2; color: #777c71; font: 10px 'DM Mono'; }
 .recent-packets { display: grid; gap: 5px; margin-top: 14px; color: #697060; font: 10px 'DM Mono', monospace; }
