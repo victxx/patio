@@ -52,6 +52,8 @@ The radio test now gives the player a receiving state while playback is active.
 
 The signal panel also shows a short packet preview while the simulated listener is receiving.
 
+The protocol workspace now includes its first binary codec: packets can be encoded with a fixed header and checksum, decoded, and serialized for an API response.
+
 The app includes a Vercel configuration in `apps/radio-test/vercel.json`; it can be deployed from that directory once the Vercel project is linked.
 
 `packages/protocol` currently contains the `PatioPacketV1` types, message and codec identifiers, packet envelope constants, and byte/Base64 conversion helpers. Packet encoding, decoding, and network transport are not implemented in this workspace yet.
