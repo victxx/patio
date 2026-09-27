@@ -6,6 +6,11 @@
   "outputDirectory": "apps/web/.next",
   "redirects": [
     {
+      "source": "/",
+      "destination": "https://patiostation.vercel.app",
+      "permanent": true
+    },
+    {
       "source": "/:path*",
       "destination": "https://patiostation.vercel.app/:path*",
       "permanent": true
