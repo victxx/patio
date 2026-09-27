@@ -2,6 +2,9 @@
 .env
 .env.local
 node_modules/
+.next/
 .pnpm-store/
 dist/
+.turbo/
 *.tsbuildinfo
+.vercel

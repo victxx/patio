@@ -5,14 +5,17 @@
   "type": "module",
   "exports": "./src/index.ts",
   "scripts": {
-    "test": "node --experimental-strip-types --test src/*.test.mjs",
+    "build": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@patio/config": "workspace:*",
     "viem": "^2.37.0"
   },
   "devDependencies": {
-    "@types/node": "^24.1.0",
-    "typescript": "^5.9.2"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

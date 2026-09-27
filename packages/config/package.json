@@ -4,6 +4,14 @@
   "private": true,
   "type": "module",
   "exports": "./src/index.ts",
-  "scripts": { "typecheck": "tsc --noEmit" },
-  "devDependencies": { "typescript": "^5.9.2" }
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:coverage": "vitest run --coverage --passWithNoTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
 }
