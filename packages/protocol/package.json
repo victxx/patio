@@ -6,8 +6,6 @@
   "exports": "./src/index.ts",
   "scripts": {
     "build": "tsc --noEmit",
-    "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -15,7 +13,6 @@
     "viem": "^2.37.0"
   },
   "devDependencies": {
-    "typescript": "catalog:",
-    "vitest": "catalog:"
+    "typescript": "catalog:"
   }
 }

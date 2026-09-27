@@ -9,7 +9,6 @@ const nextConfig: NextConfig = {
     "@patio/config",
     "@patio/ethereum",
     "@patio/protocol",
-    "@patio/ui",
   ],
 };
 
