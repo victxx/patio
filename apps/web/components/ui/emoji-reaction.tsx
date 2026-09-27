@@ -1,7 +1,12 @@
 "use client";
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import type { ComponentProps, KeyboardEvent } from "react";
+import type {
+  ComponentProps,
+  KeyboardEvent,
+  MouseEvent,
+  PointerEvent,
+} from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { X } from "lucide-react";
@@ -489,7 +494,7 @@ export function EmojiReaction({
                 {emojis.map((name, i) => (
                   <motion.button
                     key={`${name}-${i}`}
-                    ref={(node) => {
+                    ref={(node: HTMLButtonElement | null) => {
                       itemRefs.current[i] = node;
                     }}
                     type="button"
@@ -498,7 +503,7 @@ export function EmojiReaction({
                     data-emoji={name}
                     aria-label={label(name)}
                     onFocus={() => setActiveIndex(i)}
-                    onPointerDown={(event) =>
+                    onPointerDown={(event: PointerEvent<HTMLButtonElement>) =>
                       startHold(
                         name,
                         event.currentTarget.getBoundingClientRect(),
@@ -508,7 +513,7 @@ export function EmojiReaction({
                     onPointerLeave={stopHold}
                     onPointerCancel={stopHold}
                     // detail is 0 only for keyboard, pointer already fired above
-                    onClick={(event) =>
+                    onClick={(event: MouseEvent<HTMLButtonElement>) =>
                       event.detail === 0 &&
                       react(name, event.currentTarget.getBoundingClientRect())
                     }
