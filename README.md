@@ -1,3 +1,5 @@
+> **Patio's transport today:** see [`transport/`](./transport) for how it works on Hoodi and Polygon Amoy, with minimal code under the MIT license. Listen at [patio.fm](https://patio.fm). What follows is the original ETHDenver 2024 project.
+
 # PAT.IO station
 
 ## CAST PAGE BEHAVIOUR

@@ -1,0 +1,11 @@
+{
+  "name": "patio-transport",
+  "version": "0.1.0",
+  "description": "The minimum to read and write Patio packets.",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": { "test": "vitest run" },
+  "dependencies": { "viem": "^2.0.0" },
+  "devDependencies": { "vitest": "^3.0.0" }
+}
