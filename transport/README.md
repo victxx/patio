@@ -32,7 +32,7 @@ const input = encodePacket({
 decodePacket(input).sequence; // 0
 ```
 
-This is a minimal extract, not the full Patio app. Everything in this folder is under the [MIT license](./LICENSE). The rest of this repository is the original project and is not covered by it.
+This is a minimal extract, not the full Patio app. Everything in this folder is under the [MIT license](./LICENSE). The original project in `ethdenver-2024/` is not covered by it.
 
 Patio runs on testnets only. Do not use this technique on a mainnet.
 
