@@ -2,16 +2,30 @@
 
 Patio is a live radio that travels through Ethereum's pending transaction pool. Audio, and optionally a tiny picture track, is sent as calldata in transactions that wait in the mempool. Listeners read those pending transactions and play them. The media is not stored in blocks.
 
-This document explains how the transport works on two testnets, **Hoodi** and **Polygon Amoy**. It covers the idea and the wire format. It is not the application.
+This document explains how the transport works on three testnets, **Polygon Amoy**, **Gnosis Chiado** and **Hoodi**. It covers the idea and the wire format. It is not the application.
+
+## Tune in from a terminal
+
+```bash
+npm install
+npm run listen                                  # newest public broadcast on Amoy
+npm run listen -- "https://patio.fm/listen?…"   # a link someone shared
+npm run listen -- --out - | ffplay -nodisp -    # hear it as it arrives
+```
+
+It writes the broadcast's voice to a WebM file you can open in any player, and stops when the broadcaster closes. No wallet and no Patio server are involved: it reads the chain, public nodes and public Nostr relays. Options are at the top of [`examples/listen.ts`](./examples/listen.ts).
 
 ## In this folder
 
 - `src/packet.ts`: encode and decode packets.
+- `src/media.ts`: take the voice out of a packet and join packets into one file.
+- `src/hints.ts`: the Nostr hints described below.
 - `src/plan.ts`: the nonce and fee rules described below.
-- `contracts/PatioOpenRegistry.sol`: the public directory of broadcasts.
+- `src/networks.ts`: chain IDs, public nodes and registry addresses.
+- `contracts/PatioOpenRegistryV2.sol`: the public directory of broadcasts.
+- `examples/listen.ts`: the listener above.
 
 ```bash
-npm install
 npm test
 ```
 
@@ -66,6 +80,8 @@ Gas is fixed for the whole session:
 gas = 21000 + 40 × (maxPayload + 76)
 ```
 
+For a 20 KiB audio packet that is 843,240 gas.
+
 Media transactions pay nothing unless they execute. The balance only has to be large enough for nodes to accept them.
 
 ## Closing and returning funds
@@ -82,14 +98,14 @@ That transfer fills the gap and takes the whole balance, minus its own gas. Queu
 
 ## Packet format
 
-Big-endian. 76 bytes of overhead, payloads up to 24 KiB.
+Big-endian. 76 bytes of overhead, payloads up to 24 KiB. Every packet is checked against its keccak256 before use.
 
 | Offset | Size | Field |
 |---|---|---|
 | 0 | 4 | Magic `PTIO` |
 | 4 | 1 | Version (1) |
 | 5 | 1 | Type: 1 START, 2 AUDIO, 3 END, 4 VIDEO |
-| 6 | 1 | Codec |
+| 6 | 1 | Codec: 1 Opus in WebM, 5 Opus in WebM with pictures |
 | 7 | 1 | Flags |
 | 8 | 16 | Stream ID |
 | 24 | 4 | Window index |
@@ -99,35 +115,51 @@ Big-endian. 76 bytes of overhead, payloads up to 24 KiB.
 | 44 | n | Payload |
 | 44 + n | 32 | keccak256 of header and payload |
 
+**START** is media too. It marks a packet a listener can begin with, because it carries the WebM initialization segment. AUDIO packets continue from the one before.
+
 ## Media
 
-- **Audio:** Opus in WebM, 16 kbps, mono. Every packet can start playback by itself because it carries the WebM init segment.
-- **Picture:** voice plus still frames in the bytes the voice leaves free. Up to 192 px on the long side and 8 frames per second, encoded as VP9, VP8 or JPEG. It is not continuous video.
+- **Audio:** Opus in WebM, 16 kbps, mono, 6 seconds per packet. The payload is `PAA1`, a 2-byte length of the initialization segment (0 if there is none), then the WebM bytes.
+- **Picture (codec 5):** voice plus still frames in the bytes the voice leaves free. The payload is `VI`, a version, the image codec (VP8, VP9 or JPEG), the voice length, width, height and frame count, then the voice exactly as above, then the frames. Up to 192 px on the long side and 8 frames per second. It is not continuous video, and a packet without frames is still a whole voice packet.
 
 ## Finding and hearing a broadcast
 
-**Finding it.** A small registry contract emits an event with the stream ID, operator, session address, starting nonce, expiry and media mode. Media never enters the contract. A listener reads recent events and drops any session whose nonce has moved past the start or whose expiry has passed.
+**Finding it.** Public broadcasts are listed in a small registry contract. It emits an event with the stream ID, operator, session address, starting nonce, expiry and media mode. Media never enters the contract. A listener reads recent events and drops any session whose nonce has moved past the start or whose expiry has passed. Unlisted broadcasts are not in the registry: their share link carries the same details.
 
-**Hearing it.** A listener polls the pending pool about every 750 ms for the session address, parses the `input` of each transaction, checks the magic, checksum and stream ID, and reorders packets into a buffer. Playback uses MediaSource.
+In the registry (v2), the session wallet signs each announcement, so an operator can only list a session that agreed to it, and a stream ID belongs to its operator, so nobody can take another operator's stream.
 
-Replaced packets disappear from the pool quickly, so a poll can miss some. Remembering recent transaction hashes and fetching them directly fills most of those holes.
+**Hearing it.** A listener polls the pending pool about every 750 ms for the session address (`txpool_contentFrom`), parses the `input` of each transaction, checks the magic, checksum and stream ID, and reorders packets into a buffer. In a browser, playback uses MediaSource.
+
+**Hints.** Nodes do not pass gapped transactions on to each other, so a packet can sit on one public node and not on another, and many public endpoints are several machines behind one address. A pool read can come back empty while the packet exists. So the broadcaster also publishes the hash of each packet on public Nostr relays: kind 20049, tagged `patio-media-hint`, with the `d` tag `<session>:<stream>` and the content `{"v":1,"c":chain,"q":sequence,"h":hash}`. A listener looks each hash up on several public nodes. A hint is never trusted as media: the transaction must come from the session and decode as a packet of that stream. A share link names the Nostr key that signs its hints (`nh`).
 
 The end of a broadcast is the receipt of the return transfer at nonce 0.
 
-## Hoodi and Amoy
+## Networks
 
-The pipeline is the same. The differences are:
+The pipeline is the same on all three. The differences are:
 
-| | Hoodi | Polygon Amoy |
-|---|---|---|
-| Chain ID | 560048 | 80002 |
-| Audio packet | 6 s, 16 KiB | 6 s, 16 KiB |
-| Picture packet | 6 s, 24 KiB | 6 s, 24 KiB |
-| Minimum tip | 1 gwei | 25 gwei, or the node's suggestion if higher |
-| Block time expected | 12 s | 1 s |
-| Longest capture per session | 600 s | 600 s |
-| Most nonces per session | 40 | 40 |
-| Maximum funds at risk per session | 0.25 ETH | 10 POL |
+| | Polygon Amoy | Gnosis Chiado | Hoodi |
+|---|---|---|---|
+| Chain ID | 80002 | 10200 | 560048 |
+| Audio packet | 6 s, 20 KiB | 6 s, 20 KiB | 6 s, 20 KiB |
+| Picture packet | 6 s, 24 KiB | 6 s, 24 KiB | 6 s, 24 KiB |
+| Minimum tip | 25 gwei, or the node's suggestion if higher | 1 gwei | 1 gwei |
+| Block time expected | 1–2 s | 5 s | 12 s |
+| Longest capture per session | 600 s | 600 s | 600 s |
+| Most nonces per session | 40 | 40 | 40 |
+| Maximum funds at risk per session | 10 POL | 0.25 xDAI | 0.25 ETH |
+
+### Registry addresses
+
+`PatioOpenRegistryV2`, deployed 10 November 2026:
+
+| Network | Address |
+|---|---|
+| Polygon Amoy | [`0x9e69330b089c3a113977320d1adacca2d9bdddd2`](https://amoy.polygonscan.com/address/0x9e69330b089c3a113977320d1adacca2d9bdddd2) |
+| Gnosis Chiado | [`0xb09b6aa7b9521d45161f8c46c6cfe01b66699cad`](https://gnosis-chiado.blockscout.com/address/0xb09b6aa7b9521d45161f8c46c6cfe01b66699cad) |
+| Hoodi | [`0xf3d1609b8b7174e0998474870e7daaa701a5bdee`](https://hoodi.etherscan.io/address/0xf3d1609b8b7174e0998474870e7daaa701a5bdee) |
+
+The earlier open registry (v1) is retired. It emitted the same events, so a reader of v2 events can read v1 history too.
 
 ## Credits
 
