@@ -1,11 +1,23 @@
 {
   "name": "patio-transport",
-  "version": "0.1.0",
-  "description": "The minimum to read and write Patio packets.",
+  "version": "0.2.0",
+  "description": "Read and write Patio packets, and tune in to a live broadcast.",
   "license": "MIT",
   "type": "module",
   "main": "src/index.ts",
-  "scripts": { "test": "vitest run" },
-  "dependencies": { "viem": "^2.0.0" },
-  "devDependencies": { "vitest": "^3.0.0" }
+  "scripts": {
+    "listen": "tsx examples/listen.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "viem": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "nostr-tools": "^2.25.2",
+    "tsx": "^4.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^3.0.0"
+  }
 }

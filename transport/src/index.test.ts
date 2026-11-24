@@ -37,6 +37,6 @@ describe("plan", () => {
   });
 
   it("prices audio packets", () => {
-    expect(mediaGas(16 * 1024)).toBe(679_400n);
+    expect(mediaGas(20 * 1024)).toBe(843_240n);
   });
 });
